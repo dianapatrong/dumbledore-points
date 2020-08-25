@@ -15,6 +15,7 @@ take them away.
 
 * **Table name**: DumbledorePoints
 * **Primary Key**: username
+* **Create**
 
 
 ## Step-2: Create a Lambda function
