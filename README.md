@@ -2,11 +2,15 @@
 
 ![Dumbledore](images/dumbledore.png)
 House points are awarded to students at Hogwarts that do good deeds, correctly answer a question in class, 
-or win a Quidditch Match. They can also be taken away for rule-breaking. Each student earns points for his or her House, 
-and at the end of the year, the House with the most points is awarded the House Cup. 
+or win a Quidditch Match. They can also be taken away for rule-breaking.
 
 With this tutorial we will create an Slack app where you can give points to your mates for taking time to help you out but also you can 
 take them away. 
+
+    _"While you are at Hogwarts, your triumphs will earn your House points, while any rule-breaking will lose House points. 
+    At the end of the year, the House with the most points is awarded the House Cup, a great honor. I hope each of you will be a credit to whichever 
+    House becomes yours."_
+    -- Minerva McGonagall 
 
 ## Step-by-step
 
@@ -15,7 +19,7 @@ take them away.
 
 * **Table name**: DumbledorePoints
 * **Primary Key**: username
-* **Create**
+* Click **Create**
 
 
 ## Step-2: Create a Lambda function
@@ -64,3 +68,4 @@ and add that as an environment variable
 ** **Value**: < your secret > 
 
 https://api.slack.com/authentication/verifying-requests-from-slack
+https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-hello-world.html
