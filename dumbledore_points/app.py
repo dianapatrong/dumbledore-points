@@ -1,49 +1,3 @@
-#import json
-
-# import requests
-'''
-
-def lambda_handler(event, context):
-    """Sample pure Lambda function
-
-    Parameters
-    ----------
-    event: dict, required
-        API Gateway Lambda Proxy Input Format
-
-        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
-
-    context: object, required
-        Lambda Context runtime methods and attributes
-
-        Context doc: https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
-
-    Returns
-    ------
-    API Gateway Lambda Proxy Output Format: dict
-
-        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
-    """
-
-    # try:
-    #     ip = requests.get("http://checkip.amazonaws.com/")
-    # except requests.RequestException as e:
-    #     # Send some context about this error to Lambda Logs
-    #     print(e)
-
-    #     raise e
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps({
-            "message": "hello world",
-            # "location": ip.text.replace("\n", "")
-        }),
-    }
-'''
-
-
-
 import json
 import urllib
 import time
@@ -54,9 +8,10 @@ import boto3
 from urllib.parse import parse_qs
 
 dynamo = boto3.resource('dynamodb')
+HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
 
-ADMIN = ['dianapatrong']
-HOUSES = ["gryffindor", "slytherin", "ravenclaw", "hufflepuff"]
+HEADMASTER = ['dianapatrong']
+HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
 PREFIXES = ["In the lead is ", "Second place is ", "Third place is ", "Fourth place is "]
 
 
@@ -81,12 +36,41 @@ def respond(err, res=None):
     }
 
 
-def parse_message(text):
-    users = list(filter(lambda x: x.startswith('@'), text))
-    users = list(set(users))
-    #possible_points = list(lambda x: x.isnumeric())
-    return users
+def remove_at(name):
+    return name.replace('@', '').lower()
 
+
+def parse_slack_message(text):
+    users = [remove_at(name) for name in text if name.startswith('@')]
+    possible_points = [int(num) for num in text if num.isnumeric()]
+    points = possible_points[0] if possible_points[0] > 0 else 200  # default number, maybe send an error message
+    return users, points
+
+
+def get_house_points(table):
+    """Iterates over the HOUSES and save their points into a dictionary"""
+    return 0
+
+
+def parse_potential_house(house):
+    target_house = house.lower()
+    if target_house in HOUSES:
+        return target_house
+    else:
+        return "THAT IS NOT A HOUSE "
+
+
+def create_wizard(table, user, house):
+    pass
+
+
+def check_user_permission(table, user):
+    try:
+        response = HOGWARTS_ALUMNI_TABLE.get_item(
+            Key={'name': user}
+        )
+    except Exception as e:
+        print(e)
 
 def lambda_handler(event, context):
     headers = event['headers']
@@ -95,14 +79,30 @@ def lambda_handler(event, context):
     # if not verify_request(event):
     #    return respond(None,  {"text":"Message verification failed"})
 
-    table = dynamo.Table('HouseMembers')
+    #table = dynamo.Table('HouseMembers')
     params = parse_qs(event['body'])
 
     if 'text' in params:
         text = params['text'][0].split(" ")
         assigner = params['user_name'][0]
-        users = parse_message(text)
-        print(users)
+
+        if len(text) > 1:
+            # users  set house
+            if text[0:2] == ['set', 'house']:
+                # Text : /dumbledore set house @house
+                hogwarts_house = parse_potential_house(text[2])
+                ## RESPOND WITH ERROR IF POTENTIAL HOUSE NOT IN
+                create_wizard(table, assigner, hogwarts_house)
+
+
+
+
+        #users, points = parse_slack_message(text)
+    else:
+        house_ponts = get_house_points(table)
+
+
+
     return {
         'statusCode': 200,
         'body': json.dumps(text)
