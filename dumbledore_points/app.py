@@ -124,6 +124,23 @@ def format_points(house_points):
     return report
 
 
+def display_instructions():
+    # /dumbledore set house HOUSE_NAME
+    # /dumbledore leaderboard
+    instructions = {
+        'set_house': 'Add yourself to a house: _/dumbledore set house $house_name_\n',
+        'leaderboard': 'To display the leaderboard: _/dumbledore leaderboard_ \n',
+        'house_names': f'\n *HINT*: House names are  _*{", ".join(HOGWARTS_HOUSES)}*_'
+    }
+
+    dumbledore_orders = ""
+
+    for order, command in instructions.items():
+        dumbledore_orders += f'{command}'
+
+    return dumbledore_orders
+
+
 def lambda_handler(event, context):
     print("EVENT: ", event)
     message = {}
@@ -139,6 +156,9 @@ def lambda_handler(event, context):
         text = params['text'][0].split(" ")
         assigner = params['user_name'][0]
 
+        if 'leaderboard' in text:
+            house_points = get_house_leaderboard()
+            message = {'text': f'{house_points}'}
         if len(text) == 1:
             if text[0].lower() in HOGWARTS_HOUSES:
                 message = get_house_points(text[0].lower())
@@ -157,8 +177,8 @@ def lambda_handler(event, context):
 
             #users, points = parse_slack_message(text)
     else:
-        house_points = get_house_leaderboard()
-        message = {'text': f'{house_points}'}
+        instructions = display_instructions()
+        message = {'text': f'{instructions}'}
 
     message["response_type"] = "in_channel"
 
