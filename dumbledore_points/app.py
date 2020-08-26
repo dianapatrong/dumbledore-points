@@ -11,8 +11,7 @@ dynamo = boto3.resource('dynamodb')
 HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
 
 HEADMASTER = ['dianapatrong']
-HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
-PREFIXES = ["In the lead is ", "Second place is ", "Third place is ", "Fourth place is "]
+HOGWARTS_HOUSES = ['GRYFFINDOR', 'SLYTHERIN', 'RAVENCLAW', 'HUFFLEPUFF']
 
 
 def verify_request(event):
@@ -47,44 +46,88 @@ def parse_slack_message(text):
     return users, points
 
 
-def get_house_points(table):
+def get_house_points(house):
     """Iterates over the HOUSES and save their points into a dictionary"""
-    return 0
+    try:
+        db_response = HOGWARTS_ALUMNI_TABLE.scan(
+            FilterExpression=boto3.dynamodb.conditions.Attr('house').eq(house)
+        )
+        items = db_response['Items']
+        total_points = sum([i['points'] for i in items])
+        house_members = {}
+
+        return "YAY"
+    except Exception as e:
+        return {'text': 'Something went wrong when getting the house points'}
 
 
 def parse_potential_house(house):
     target_house = house.lower()
-    if target_house in HOUSES:
+    if target_house in HOGWARTS_HOUSES:
         return target_house
     else:
         return "THAT IS NOT A HOUSE "
 
 
-def create_wizard(table, user, house):
-    pass
-
-
-def check_user_permission(table, user):
-    try:
-        response = HOGWARTS_ALUMNI_TABLE.get_item(
-            Key={'name': user}
+def create_wizard(wizard, house):
+    wizard_found = check_user_permission(wizard)
+    wizard = remove_at(wizard)
+    if not wizard_found:
+        HOGWARTS_ALUMNI_TABLE.put_item(
+            Item={
+                'username': wizard,
+                'house': house,
+                'points': 0
+            }
         )
+        message = {'text': f'Welcome {wizard} to {house}'}  # change username to full name eventually
+    else:
+        message = {'text': f'Wizard {wizard} already exists'}
+    return message
+
+
+def check_user_permission(wizard):
+    try:
+        HOGWARTS_ALUMNI_TABLE.get_item(
+            Key={
+                'username': wizard
+            }
+        )
+        return True
     except Exception as e:
         print(e)
+        return False
+
+
+def get_house_leaderboard():
+    house_points = {}
+    for house in HOGWARTS_HOUSES:
+        try:
+            db_response = HOGWARTS_ALUMNI_TABLE.scan(FilterExpression=boto3.dynamodb.conditions.Attr('house').eq(house))
+            items = db_response['Items']
+            house_points[house] = sum([i['points'] for i in items])
+            return house_points
+        except Exception as e:
+            return "ERROR"
+
 
 def lambda_handler(event, context):
+    message = {}
     headers = event['headers']
     body = event['body']
 
     # if not verify_request(event):
     #    return respond(None,  {"text":"Message verification failed"})
 
-    #table = dynamo.Table('HouseMembers')
     params = parse_qs(event['body'])
 
     if 'text' in params:
         text = params['text'][0].split(" ")
         assigner = params['user_name'][0]
+
+        if len(text) == 1:
+            if text[0].upper() in HOGWARTS_HOUSES:
+                message = get_house_points(text[0].lower())
 
         if len(text) > 1:
             # users  set house
@@ -92,20 +135,16 @@ def lambda_handler(event, context):
                 # Text : /dumbledore set house @house
                 hogwarts_house = parse_potential_house(text[2])
                 ## RESPOND WITH ERROR IF POTENTIAL HOUSE NOT IN
-                create_wizard(table, assigner, hogwarts_house)
+                message = create_wizard(assigner, hogwarts_house)
 
-
-
-
-        #users, points = parse_slack_message(text)
+            users, points = parse_slack_message(text)
     else:
-        house_ponts = get_house_points(table)
-
-
+        house_points = get_house_leaderboard()
+        message = {'text': f'{house_points}'}
 
     return {
         'statusCode': 200,
-        'body': json.dumps(text)
+        'body': json.dumps(message)
     }
 
 
