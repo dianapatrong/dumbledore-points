@@ -11,7 +11,7 @@ dynamo = boto3.resource('dynamodb')
 HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
 
 HEADMASTER = ['dianapatrong']
-HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
+HOGWARTS_HOUSES = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff']
 PREFIXES = ["In the lead is ","Second place is ","Third place is ","Fourth place is "]
 
 
@@ -152,7 +152,7 @@ def lambda_handler(event, context):
                 if hogwarts_house is not None:
                     message = create_wizard(assigner, hogwarts_house)
                 else:
-                    message = {'text': f'Come on, Harry Potter started in 1997 you should know the house names by now: {HOGWARTS_HOUSES}'}
+                    message = {'text': f'Come on, Harry Potter started in 1997 you should know the house names by now: _*{", ".join(HOGWARTS_HOUSES)}*_'}
                 print("MESSAGE: ", message)
 
             #users, points = parse_slack_message(text)
