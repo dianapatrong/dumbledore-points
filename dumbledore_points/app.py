@@ -150,9 +150,11 @@ def display_instructions():
     # /dumbledore leaderboard
     # /dumbledore $house_name
     instructions = {
-        'set_house': 'Add yourself to a house: _/dumbledore set house $house_name_\n',
-        'leaderboard': 'Display the leaderboard: _/dumbledore leaderboard_ \n',
-        'house_leaderboard': 'Display the leaderboard of your house: _/dumbledore $house_name_\n',
+        'Set house': '/dumbledore set house house_name\n',
+        'Leaderboard': '/dumbledore leaderboard\n',
+        'House Leaderboard': '/dumbledore house_name\n',
+        'Give points': '/dumbledore give 10 points to @wizard _*or*_ /dumbledore +10 @wizard\n',
+        'Remove points': '/dumbledore remove 10 points from @wizard _*or*_ /dumbledore -10 @wizard\n',
         'house_names': f'\n *HINT*: House names are  _*{", ".join(HOGWARTS_HOUSES)}*_'
     }
 
@@ -172,9 +174,9 @@ def get_wizard_points(wizard):
         item = db_response['Item']
         points = item['points']
         house = item['house'].capitalize()
-        return {'text': f'_{wizard}_ has {points} points for _{house}_'}
-    except Exception as e:
-        return {'text': f'Witch/wizard _*{wizard}*_ is not listed as a *Hogwarts Alumni*, most likely to be enrolled in _Beauxbatons_ or _Durmstrang_ {e}'}
+        return {'text': f'_*{wizard}*_ has *{points}* points contributing to _{house}_'}
+    except Exception:
+        return {'text': f'Witch/wizard _*{wizard}*_ is not listed as a *Hogwarts Alumni*, most likely to be enrolled in _Beauxbatons_ or _Durmstrang_ '}
 
 
 def clean_points(points):
@@ -273,7 +275,7 @@ def lambda_handler(event, context):
             wizards, points = parse_slack_message(text)
             agg_messages = []
             for wizard in wizards:
-                print("wizard: ", wizard, " , assigner: ", assigner)
+                # Avoid wizards from granting points to themselves
                 if wizard == assigner and assigner not in HEADMASTER:
                     message = get_wizard_points(wizard)
                     message['attachments'] = [{'text': '_Are you awarding points to yourself?_ :shame:'}]
@@ -284,7 +286,7 @@ def lambda_handler(event, context):
                 message = {'text': '\n'.join(m_points['text'] for m_points in agg_messages)}
     else:
         instructions = display_instructions()
-        message = {'text': f'{instructions}'}
+        message = {'text': f'First add yourself to your favorite house,  then you can start giving or taking points right away :boom: ', 'attachments': [{"text": instructions}]}
 
     message["response_type"] = "in_channel"
 
