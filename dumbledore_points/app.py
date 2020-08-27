@@ -41,7 +41,7 @@ def remove_at(name):
 
 
 def parse_slack_message(text):
-    give_points = True if any(word in ['give', '+'] for word in text) else False
+    give_points = True if [word for word in text if any(s in word for s in ['give', '+'])] else False
     wizards = [remove_at(name) for name in text if name.startswith('@')]
     possible_points = []
     for num in text:
@@ -233,6 +233,7 @@ def allocate_points(wizard, points, assigner):
 
 
 def lambda_handler(event, context):
+    print("event: ", event)
     message = {}
     headers = event['headers']
     body = event['body']
@@ -242,11 +243,12 @@ def lambda_handler(event, context):
 
     params = parse_qs(event['body'])
     if 'text' in params:
-        text = params['text'][0].split(" ")
+        text = params['text'][0].replace('\xa0', ' ').split(" ")
         assigner = params['user_name'][0]
 
         # Display leaderboard for all houses
-        if 'leaderboard' in text:
+
+        if any('leaderboard' in word for word in text):
             house_points = get_house_leaderboard()
             message = {'text': f'{house_points}'}
 
