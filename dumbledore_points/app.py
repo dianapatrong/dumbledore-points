@@ -41,9 +41,26 @@ def remove_at(name):
 
 
 def parse_slack_message(text):
+    give_points = True if any(word in ['give', '+'] for word in text) else False
     wizards = [remove_at(name) for name in text if name.startswith('@')]
-    possible_points = [int(num) for num in text if num.isnumeric()]
-    points = possible_points[0] if possible_points[0] > 0 else 200  # default number, maybe send an error message
+    possible_points = []
+    for num in text:
+        try:
+            possible_points.append(int(num))
+        except ValueError:
+            print("Not an integer")
+
+    if not possible_points and give_points:
+        points = 200  # Default value if not given any points
+    elif not give_points:
+        points = -possible_points[0] if possible_points[0] > 0 else possible_points[0]
+    else:
+        points = possible_points[0]
+
+    print("give_points ", give_points)
+    print("possible_points", possible_points)
+    print("points ", points)
+
     return wizards, points
 
 
@@ -175,6 +192,7 @@ def allocate_points(wizard, points, assigner):
         print("allocate_points 1 Exception:", e)
 
     points = clean_points(points)
+    print("clean points", points)
     wizard_found = check_user_permission(wizard)
     points_action = f'awarded _*{points}*_ points to {wizard}' if points > 0 else f'removed _*{points}*_ points from {wizard}'
 
@@ -245,17 +263,20 @@ def lambda_handler(event, context):
                 message = {'text': f'Harry Potter was released June 26, 1997 you should know the house names by now: _*{", ".join(HOGWARTS_HOUSES)}*_'}
 
         # Allocate points
-        if any(word in ['give', 'remove', '+', '-' ] for word in text):
+        point_allocators = ['give', 'remove', '+', '-']
+        matching = [word for word in text if any(s in word for s in point_allocators)]
+        print("matching", matching)
+        if matching:
+            print("allocate points text ", text)
             wizards, points = parse_slack_message(text)
+            agg_messages = []
             for wizard in wizards:
                 if wizard == assigner and assigner not in HEADMASTER:
                     wizard_points = get_wizard_points(wizard)
                 else:
-                    message = allocate_points(wizard, points, assigner)
-                    print(message)
-
-
-
+                    agg_messages.append(allocate_points(wizard, points, assigner))
+                    print(agg_messages)
+            message = {'text': '\n'.join(m_points['text'] for m_points in agg_messages)}
     else:
         instructions = display_instructions()
         message = {'text': f'{instructions}'}
