@@ -10,7 +10,7 @@ from urllib.parse import parse_qs
 dynamo = boto3.resource('dynamodb')
 HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
 
-HEADMASTER = ['dianapatrong']
+HEADMASTER = ['vahev']
 HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
 PREFIXES = ["In the lead is ", "Second place is ", "Third place is ", "Fourth place is "]
 
@@ -169,12 +169,12 @@ def get_wizard_points(wizard):
                 'username': wizard
             }
         )
-        item = db_response['Items']
+        item = db_response['Item']
         points = item['points']
         house = item['house'].capitalize()
         return {'text': f'_{wizard}_ has {points} points for _{house}_'}
     except Exception as e:
-        return {'text': f'Witch/wizard _*{wizard}*_ is not listed as a Hogwarts Alumni, most likely to be enrolled in Beauxbatons or Durmstrang'}
+        return {'text': f'Witch/wizard _*{wizard}*_ is not listed as a *Hogwarts Alumni*, most likely to be enrolled in _Beauxbatons_ or _Durmstrang_ {e}'}
 
 
 def clean_points(points):
@@ -247,8 +247,8 @@ def lambda_handler(event, context):
         assigner = params['user_name'][0]
 
         # Display leaderboard for all houses
-
-        if any('leaderboard' in word for word in text):
+        #if any('leaderboard' in word for word in text):
+        if 'leaderboard' in text:
             house_points = get_house_leaderboard()
             message = {'text': f'{house_points}'}
 
@@ -273,12 +273,15 @@ def lambda_handler(event, context):
             wizards, points = parse_slack_message(text)
             agg_messages = []
             for wizard in wizards:
+                print("wizard: ", wizard, " , assigner: ", assigner)
                 if wizard == assigner and assigner not in HEADMASTER:
-                    wizard_points = get_wizard_points(wizard)
+                    message = get_wizard_points(wizard)
+                    message['attachments'] = [{'text': '_Are you awarding points to yourself?_ :shame:'}]
                 else:
                     agg_messages.append(allocate_points(wizard, points, assigner))
-                    print(agg_messages)
-            message = {'text': '\n'.join(m_points['text'] for m_points in agg_messages)}
+
+            if agg_messages:
+                message = {'text': '\n'.join(m_points['text'] for m_points in agg_messages)}
     else:
         instructions = display_instructions()
         message = {'text': f'{instructions}'}
