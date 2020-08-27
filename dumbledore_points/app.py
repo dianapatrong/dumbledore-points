@@ -11,8 +11,8 @@ dynamo = boto3.resource('dynamodb')
 HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
 
 HEADMASTER = ['dianapatrong']
-HOGWARTS_HOUSES = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff']
-PREFIXES = ["In the lead is ","Second place is ","Third place is ","Fourth place is "]
+HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
+PREFIXES = ["In the lead is ", "Second place is ", "Third place is ", "Fourth place is "]
 
 
 def verify_request(event):
@@ -54,16 +54,42 @@ def get_house_points(house):
             FilterExpression=boto3.dynamodb.conditions.Attr('house').eq(house)
         )
         items = db_response['Items']
-        total_points = sum([i['points'] for i in items])
+        total_points = int(sum([i['points'] for i in items]))
         house_members = {}
-
-        return "YAY"
+        for i in items:
+            house_members[i['username']] = i['points']
+        members_by_points = {member: house_members[member] for member in sorted(house_members, key=house_members.get, reverse=True)}
+        house_members_leaderboard = ""
+        for member, points in members_by_points.items():
+            house_members_leaderboard += f'_{member}_: {points}\n'
+        message = {'text': f'_*{house.capitalize()}*_ has *{total_points}* points', 'attachments': [{"text": house_members_leaderboard}]}
+        return message
     except Exception as e:
-        return {'text': 'Something went wrong when getting the house points'}
+        return {'text': f'Something went wrong when getting the house points: {e}'}
+
+
+def format_points(house_points):
+    order_by_points = {house: house_points[house] for house in sorted(house_points, key=house_points.get, reverse=True)}
+    houses_leaderboard = ""
+    for prefix, (house, points) in zip(PREFIXES, order_by_points.items()):
+        houses_leaderboard += f'_{prefix}*{house.capitalize()}* with *{points}* points_\n'
+    return houses_leaderboard
+
+
+def get_house_leaderboard():
+    house_points = {}
+    for house in HOGWARTS_HOUSES:
+        try:
+            db_response = HOGWARTS_ALUMNI_TABLE.scan(
+                FilterExpression=boto3.dynamodb.conditions.Attr('house').eq(house.lower()))
+            items = db_response['Items']
+            house_points[house] = int(sum([i['points'] for i in items]))
+        except Exception as e:
+            return e
+    return format_points(house_points)
 
 
 def parse_potential_house(house):
-    print("hosue", house)
     target_house = house.lower()
     if target_house in HOGWARTS_HOUSES:
         return target_house
@@ -74,7 +100,6 @@ def parse_potential_house(house):
 def create_wizard(wizard, house):
     wizard_found = check_user_permission(wizard)
     wizard = remove_at(wizard)
-    print("WIZARD FOUND: ", wizard_found)
     if not wizard_found:
         HOGWARTS_ALUMNI_TABLE.put_item(
             Item={
@@ -103,33 +128,13 @@ def check_user_permission(wizard):
         return False
 
 
-def get_house_leaderboard():
-    house_points = {}
-    for house in HOGWARTS_HOUSES:
-        try:
-            db_response = HOGWARTS_ALUMNI_TABLE.scan(FilterExpression=boto3.dynamodb.conditions.Attr('house').eq(house.lower()))
-            print(db_response)
-            items = db_response['Items']
-            house_points[house] = int(sum([i['points'] for i in items]))
-        except Exception as e:
-            return e
-    return format_points(house_points)
-
-
-def format_points(house_points):
-    order_by_points = {house: points for house, points in sorted(house_points.items(), key=lambda x: x[1], reverse=True)}
-    report = ""
-    for prefix, (house, points) in zip(PREFIXES, order_by_points.items()):
-        report += f'_{prefix}*{house.capitalize()}* with *{points}* points_\n'
-    return report
-
-
 def display_instructions():
     # /dumbledore set house HOUSE_NAME
     # /dumbledore leaderboard
     instructions = {
         'set_house': 'Add yourself to a house: _/dumbledore set house $house_name_\n',
         'leaderboard': 'To display the leaderboard: _/dumbledore leaderboard_ \n',
+        'house_leaderboard': 'To display the leaderboard of your house: _/dumbledore $house_name',
         'house_names': f'\n *HINT*: House names are  _*{", ".join(HOGWARTS_HOUSES)}*_'
     }
 
@@ -137,12 +142,10 @@ def display_instructions():
 
     for order, command in instructions.items():
         dumbledore_orders += f'{command}'
-
     return dumbledore_orders
 
 
 def lambda_handler(event, context):
-    print("EVENT: ", event)
     message = {}
     headers = event['headers']
     body = event['body']
@@ -156,26 +159,27 @@ def lambda_handler(event, context):
         text = params['text'][0].split(" ")
         assigner = params['user_name'][0]
 
+        # Display leaderboard for all houses
         if 'leaderboard' in text:
             house_points = get_house_leaderboard()
             message = {'text': f'{house_points}'}
-        if len(text) == 1:
-            if text[0].lower() in HOGWARTS_HOUSES:
-                message = get_house_points(text[0].lower())
+
+        # Display leaderboard for the house requested
+        if len(text) == 1 and text[0].lower() in HOGWARTS_HOUSES:
+            message = get_house_points(text[0].lower())
 
         if len(text) > 1:
             # users  set house
             if text[0:2] == ['set', 'house']:
                 # Text : /dumbledore set house @house
                 hogwarts_house = parse_potential_house(text[2])
-                print("hogwarts_house ", hogwarts_house)
                 if hogwarts_house is not None:
                     message = create_wizard(assigner, hogwarts_house)
                 else:
-                    message = {'text': f'Come on, Harry Potter started in 1997 you should know the house names by now: _*{", ".join(HOGWARTS_HOUSES)}*_'}
-                print("MESSAGE: ", message)
+                    message = {
+                        'text': f'Come on, Harry Potter was released June 26, 1997 you should know the house names by now: _*{", ".join(HOGWARTS_HOUSES)}*_'}
 
-            #users, points = parse_slack_message(text)
+            # users, points = parse_slack_message(text)
     else:
         instructions = display_instructions()
         message = {'text': f'{instructions}'}
