@@ -41,10 +41,10 @@ def remove_at(name):
 
 
 def parse_slack_message(text):
-    users = [remove_at(name) for name in text if name.startswith('@')]
+    wizards = [remove_at(name) for name in text if name.startswith('@')]
     possible_points = [int(num) for num in text if num.isnumeric()]
     points = possible_points[0] if possible_points[0] > 0 else 200  # default number, maybe send an error message
-    return users, points
+    return wizards, points
 
 
 def get_house_points(house):
@@ -124,25 +124,94 @@ def check_user_permission(wizard):
         item = db_response['Item']
         return True
     except Exception as e:
-        print(e)
+        print("check_user_permission Exception:", e)
         return False
 
 
 def display_instructions():
-    # /dumbledore set house HOUSE_NAME
+    # /dumbledore set house $house_name
     # /dumbledore leaderboard
+    # /dumbledore $house_name
     instructions = {
         'set_house': 'Add yourself to a house: _/dumbledore set house $house_name_\n',
-        'leaderboard': 'To display the leaderboard: _/dumbledore leaderboard_ \n',
-        'house_leaderboard': 'To display the leaderboard of your house: _/dumbledore $house_name',
+        'leaderboard': 'Display the leaderboard: _/dumbledore leaderboard_ \n',
+        'house_leaderboard': 'Display the leaderboard of your house: _/dumbledore $house_name_\n',
         'house_names': f'\n *HINT*: House names are  _*{", ".join(HOGWARTS_HOUSES)}*_'
     }
 
     dumbledore_orders = ""
-
     for order, command in instructions.items():
         dumbledore_orders += f'{command}'
     return dumbledore_orders
+
+
+def get_wizard_points(wizard):
+    try:
+        db_response = HOGWARTS_ALUMNI_TABLE.get_item(
+            Key={
+                'username': wizard
+            }
+        )
+        item = db_response['Items']
+        points = item['points']
+        house = item['house'].capitalize()
+        return {'text': f'_{wizard}_ has {points} points for _{house}_'}
+    except Exception as e:
+        return {'text': f'Witch/wizard _*{wizard}*_ is not listed as a Hogwarts Alumni, most likely to be enrolled in Beauxbatons or Durmstrang'}
+
+
+def clean_points(points):
+    return max(-2000, points) if points < 0 else min(2000, points)
+
+
+def allocate_points(wizard, points, assigner):
+    try:
+        db_response_1 = HOGWARTS_ALUMNI_TABLE.get_item(
+            Key={
+                'username': wizard
+            }
+        )
+    except Exception as e:
+        print("allocate_points 1 Exception:", e)
+
+    points = clean_points(points)
+    wizard_found = check_user_permission(wizard)
+    points_action = f'awarded _*{points}*_ points to {wizard}' if points > 0 else f'removed _*{points}*_ points from {wizard}'
+
+    if wizard_found:
+        try:
+            db_response_2 = HOGWARTS_ALUMNI_TABLE.update_item(
+                Key={
+                    'username': wizard
+                },
+                UpdateExpression='set points = points +:p',
+                ExpressionAttributeValues={
+                    ':p': points
+                },
+                ReturnValues="ALL_NEW"
+            )
+        except Exception as e:
+            print("Allocate points Exception", e)
+
+        try:
+            db_response_3 = HOGWARTS_ALUMNI_TABLE.update_item(
+                Key={
+                    'username': wizard
+                },
+                UpdateExpression="set points = :min",
+                ConditionExpression="points < :min",
+                ExpressionAttributeValues={
+                    ':min': 0
+                },
+                ReturnValues="UPDATED_NEW"
+            )
+            message = db_response_3
+        except Exception as e:
+            message = db_response_2
+
+        total_points = message['Attributes']['points']
+        message = {'text': f'{assigner} has {points_action}, new total is _*{total_points}*_ points'}
+        return message
 
 
 def lambda_handler(event, context):
@@ -154,7 +223,6 @@ def lambda_handler(event, context):
     #    return respond(None,  {"text":"Message verification failed"})
 
     params = parse_qs(event['body'])
-
     if 'text' in params:
         text = params['text'][0].split(" ")
         assigner = params['user_name'][0]
@@ -168,18 +236,26 @@ def lambda_handler(event, context):
         if len(text) == 1 and text[0].lower() in HOGWARTS_HOUSES:
             message = get_house_points(text[0].lower())
 
-        if len(text) > 1:
-            # users  set house
-            if text[0:2] == ['set', 'house']:
-                # Text : /dumbledore set house @house
-                hogwarts_house = parse_potential_house(text[2])
-                if hogwarts_house is not None:
-                    message = create_wizard(assigner, hogwarts_house)
-                else:
-                    message = {
-                        'text': f'Come on, Harry Potter was released June 26, 1997 you should know the house names by now: _*{", ".join(HOGWARTS_HOUSES)}*_'}
+        # Set wizard to requested house
+        if ['set', 'house'] == text[0:2]:
+            hogwarts_house = parse_potential_house(text[2])
+            if hogwarts_house is not None:
+                message = create_wizard(assigner, hogwarts_house)
+            else:
+                message = {'text': f'Harry Potter was released June 26, 1997 you should know the house names by now: _*{", ".join(HOGWARTS_HOUSES)}*_'}
 
-            # users, points = parse_slack_message(text)
+        # Allocate points
+        if any(word in ['give', 'remove', '+', '-' ] for word in text):
+            wizards, points = parse_slack_message(text)
+            for wizard in wizards:
+                if wizard == assigner and assigner not in HEADMASTER:
+                    wizard_points = get_wizard_points(wizard)
+                else:
+                    message = allocate_points(wizard, points, assigner)
+                    print(message)
+
+
+
     else:
         instructions = display_instructions()
         message = {'text': f'{instructions}'}
