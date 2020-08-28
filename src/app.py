@@ -10,26 +10,22 @@ from dynamo_db_helper import *
 HEADMASTER = ['dianapatrong']
 HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
 PREFIXES = ["In the lead is ", "Second place is ", "Third place is ", "Fourth place is "]
-
+CHANNEL_ID = os.environ['CHANNEL_ID']
 
 def verify_request(event):
     body = event['body']
     timestamp = event['headers']['X-Slack-Request-Timestamp']
     slack_signature = event['headers']['X-Slack-Signature']
-
     sig_basestring = f"v0:{timestamp}:{body}".encode('utf-8')
     my_signature = f"v0={hmac.new(os.environ['SLACK_KEY'].encode('utf-8'), sig_basestring, hashlib.sha256).hexdigest()}"
     return hmac.compare_digest(my_signature, slack_signature)
 
 
-def respond(err, res=None):
-    res["response_type"] = "in_channel"
+def respond(message=None):
+    message['response_type'] = 'in_channel'
     return {
-        'statusCode': '400' if err else '200',
-        'body': err.message if err else json.dumps(res),
-        'headers': {
-            'Content-Type': 'application/json',
-        },
+        'statusCode': 200,
+        'body': json.dumps(message)
     }
 
 
@@ -252,10 +248,17 @@ def send_random_quote(assigner):
 
 def lambda_handler(event, context):
     message = {}
-    #if not verify_request(event):
-    #    return respond(None,  {"text":"Message verification failed"})
+   # if not verify_request(event):
+   #     return respond({"text":"Message verification failed"})
 
     params = parse_qs(event['body'])
+    channel_id = params['channel_id']
+
+    if channel_id[0] != CHANNEL_ID:  # This is only for locking the slash command to a single channel
+        message = respond({'text': '_The *Marauder\'s Map* shows everyone, use it to find the slack channel where '
+                                   'this feature is located_'})
+        return message
+
     if 'text' in params:
         text = params['text'][0].replace('\xa0', ' ').split(" ")
         assigner = params['user_name'][0]
@@ -291,12 +294,9 @@ def lambda_handler(event, context):
                            f'then you can start giving or taking points right away '
                            f':male_mage::skin-tone-2:  :deathly-hallows: ', 'attachments': [{"text": instructions}]}
 
-    message["response_type"] = "in_channel"
+    message['response_type'] = 'in_channel'
 
-    return {
-        'statusCode': 200,
-        'body': json.dumps(message)
-    }
+    return respond(message)
 
 
 

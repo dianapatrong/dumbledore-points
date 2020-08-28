@@ -97,3 +97,5 @@ To display the leaderboards:
 * `/dumbledore gryffindor` will display the total of points of the house and the members leaderboard  
 
 If you mess something up you will most likely end with a random message from dumbledore.
+
+> **NOTE**: I used ![emojis](images/emojis) for the sorting hat feature and some of the responses
