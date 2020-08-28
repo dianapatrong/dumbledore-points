@@ -128,7 +128,7 @@ def create_wizard(wizard, house):
         )
         message = {'text': f'Welcome _*{wizard}*_ to _*{house}*_'}  # change username to full name eventually
     else:
-        message = {'text': f'Wizard _*{wizard}*_ already exists and belongs to _*{house.capitalize()}*_'}
+        message = {'text': f'Wizard _*{wizard}*_ already exists'}
     return message
 
 
@@ -238,8 +238,8 @@ def lambda_handler(event, context):
     headers = event['headers']
     body = event['body']
 
-    # if not verify_request(event):
-    #    return respond(None,  {"text":"Message verification failed"})
+    if not verify_request(event):
+        return respond(None,  {"text":"Message verification failed"})
 
     params = parse_qs(event['body'])
     if 'text' in params:
@@ -256,17 +256,24 @@ def lambda_handler(event, context):
             message = get_house_points(text[0].lower())
 
         # Set wizard to requested house
+        hogwarts_house = None
         if ['set', 'house'] == text[0:2]:
-            if text[2] == 'random':
-                sorting_hat = requests.get('https://www.potterapi.com/v1/sortingHat')
-                hogwarts_house = sorting_hat.text
-            else:
-                hogwarts_house = parse_potential_house(text[2])
+            if len(text) == 3:
+                if text[2] == 'random':
+                    sorting_hat = requests.get('https://www.potterapi.com/v1/sortingHat')
+                    hogwarts_house = sorting_hat.text
+                else:
+                    hogwarts_house = parse_potential_house(text[2])
+
             if hogwarts_house is not None:
                 message = create_wizard(assigner, hogwarts_house)
+            elif len(text) == 2:
+                message = {'text': f'_What do you think this is? Magic? I do not know which house do you want to be in_'}
             else:
-                message = {'text': f'Are you a *muggle* or what? Spell the house name correctly:'
-                                   f' _*{", ".join(HOGWARTS_HOUSES)}*_ or _*random*_'}
+                message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
+                                   f' *{", ".join(HOGWARTS_HOUSES)}* or *random*_'}
+            print("Len(texT)", len(text))
+            print("MESSAGE", message)
 
         # Allocate points
         point_allocators = ['give', 'remove', '+', '-']

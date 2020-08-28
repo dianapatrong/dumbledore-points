@@ -13,6 +13,8 @@ take them away.
     -- Minerva McGonagall 
 
 ## Step-by-step
+Originally I started to develop this app following the steps below, but since it was too tedious to copy the lambda function
+each time I used **AWS SAM**. 
 
 ## Step-1: Create a database
 **AWS Console** -> **Services** -> **DynamoDB** -> **Create table**
@@ -44,14 +46,6 @@ On the lambda function, click on **Add trigger**
 * **API Type**: REST API 
 * Click **Add**
 
-# TO DO 
-## Step-4: Add CloudWatch as trigger
-On the lambda function, click on **Add trigger**
-* Select **CloudWatch Logs**
-* **Log group**: /aws/lambda/DumbledorePoints
-* **Filter name**: Dumbledore Points trigger Lambda
-* Click **Add**
-
 ## Step-4: Slack integration
 Go to `https://api.slack.com/apps` and click on **Create new app**
 
@@ -61,11 +55,12 @@ Go to `https://api.slack.com/apps` and click on **Create new app**
 
 After creating the app select **Slash commands** -> **Create New Command**
 
-
 Under **Basic Information**, look for **Signing Secret**, go to the Lambda Function
 and add that as an environment variable
 ** **Name**: SLACK_KEY
 ** **Value**: < your secret > 
 
-https://api.slack.com/authentication/verifying-requests-from-slack
-https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-hello-world.html
+
+FOR MORE INFORMATION: 
+* https://api.slack.com/authentication/verifying-requests-from-slack
+* https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-hello-world.html

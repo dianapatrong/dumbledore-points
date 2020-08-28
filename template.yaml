@@ -22,8 +22,8 @@ Resources:
         DumbledorePoints:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /dumbledore
-            Method: get
+            Path: /DumbledorePoints
+            Method: any
 
 
 Outputs:
@@ -31,8 +31,8 @@ Outputs:
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   DumbledorePointsApi:
-    Description: "API Gateway endpoint URL for Prod stage for Dumbledore Points function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/dumbledore/"
+    Description: "API Gateway endpoint URL for default stage for Dumbledore Points function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/default/DumbledorePoints/"
   DumbledorePoints:
     Description: "Dumbledore Points Lambda Function ARN"
     Value: !GetAtt DumbledorePointsFunction.Arn
