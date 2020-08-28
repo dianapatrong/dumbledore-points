@@ -37,13 +37,8 @@ def remove_at(name):
     return name.replace('@', '').lower()
 
 
-def parse_slack_message(text):
-    give_points = True if [word for word in text if any(s in word for s in ['give', '+'])] else False
-    wizards = [remove_at(name) for name in text if name.startswith('@')]
+def parse_points(text, give_points):
     possible_points = []
-
-    if not wizards:
-        return False, False
     for num in text:
         try:
             possible_points.append(int(num))
@@ -56,11 +51,20 @@ def parse_slack_message(text):
         points = -possible_points[0] if possible_points[0] > 0 else possible_points[0]
     else:
         points = possible_points[0]
-    return wizards, points
+    return points
+
+
+def parse_slack_message(text):
+    give_points = True if [word for word in text if any(s in word for s in ['give', '+'])] else False
+    wizards = [remove_at(name) for name in text if name.startswith('@')]
+    if not wizards:
+        return False, False
+    else:
+        points = parse_points(text, give_points)
+        return wizards, points
 
 
 def get_house_points(house):
-    """Iterates over the HOUSES and save their points into a dictionary"""
     scan_success, scanned_wizards = scan_info(house)
 
     if scan_success:
