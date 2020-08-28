@@ -298,6 +298,21 @@ def set_hogwarts_house(text, assigner):
     return message
 
 
+def send_random_quote(assigner):
+    random_quotes = [
+        'What happened down in the dungeons between you and Professor Quirrell is a complete secret, so, naturally the whole school knows.',
+        'One can never have enough socks',
+        f'It is our choices, *{assigner}*, that show what we truly are, far more than our abilities.',
+        f'It is a curious thing, *{assigner}*, but perhaps those who are best suited to power are those who have never sought it.',
+        'You will also find that help will always be given at Hogwarts to those who ask for it.',
+        'Happiness can be found even in the darkest of times, when one only remembers to turn on the light.',
+        f'Do not put your wand there, *{assigner}*! .. Better wizards than you have lost buttocks, you know.',
+        f'Of course this is happening inside your head, *{assigner}*, but why on earth should that mean that it is not real?',
+        'There are some things you cannot share without ending up liking each other, and knocking out a twelve-foot mountain troll is one of them.',
+        'Never trust anything that can think for itself if you cannot see where it keeps its brain.'
+    ]
+    return {'text': f'_{random.choice(random_quotes)}_'}
+
 def lambda_handler(event, context):
     message = {}
     headers = event['headers']
@@ -332,13 +347,7 @@ def lambda_handler(event, context):
             message = process_point_allocation(assigner, text)
 
         else:
-            random_quotes = [
-                'What happened down in the dungeons between you and Professor Quirrell is a complete secret, so, naturally the whole school knows.',
-                'One can never have enough socks',
-                f'It is our choices, *{assigner}*, that show what we truly are, far more than our abilities.',
-                f'It is a curious thing, *{assigner}*, but perhaps those who are best suited to power are those who have never sought it.'
-            ]
-            message = {'text': f'_{random.choice(random_quotes)}_'}
+            message = send_random_quote(assigner)
 
     else:
         instructions = display_instructions()
