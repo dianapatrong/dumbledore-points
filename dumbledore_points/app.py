@@ -166,26 +166,11 @@ def display_instructions():
     return dumbledore_orders
 
 
-def get_wizard_points(wizard):
-    try:
-        db_response = HOGWARTS_ALUMNI_TABLE.get_item(
-            Key={
-                'username': wizard
-            }
-        )
-        item = db_response['Item']
-        points = item['points']
-        house = item['house'].capitalize()
-        return {'text': f'_*{wizard}*_ has *{points}* points contributing to _{house}_'}
-    except Exception:
-        return {'text': f'Witch/wizard _*{wizard}*_ is not listed as a *Hogwarts Alumni*, most likely to be enrolled in _Beauxbatons_ or _Durmstrang_ '}
-
-
 def clean_points(points):
     return max(-2000, points) if points < 0 else min(2000, points)
 
 
-def update_item(wizard, update_expression=None, condition_expression='', expression_attributes=None, return_values=None):
+def update_wizard_points(wizard, update_expression=None, condition_expression='', expression_attributes=None, return_values=None):
     if not condition_expression:
         try:
             db_response_2 = HOGWARTS_ALUMNI_TABLE.update_item(
@@ -217,30 +202,46 @@ def update_item(wizard, update_expression=None, condition_expression='', express
             return False
 
 
-def allocate_points(wizard, points, assigner):
+def get_wizard_points(wizard):
+    wizard_found, wizard_info = get_wizard(wizard)
+    if wizard_found:
+        points = wizard_info['points']
+        house = wizard_info['house'].capitalize()
+        return {'text': f'_*{wizard}*_ has *{points}* points contributing to _{house}_'}
+    else:
+        return wizard_info
+
+
+def get_wizard(wizard):
     try:
-        db_response_1 = HOGWARTS_ALUMNI_TABLE.get_item(
+        db_response = HOGWARTS_ALUMNI_TABLE.get_item(
             Key={
                 'username': wizard
             }
         )
-    except Exception as e:
-        print("allocate_points 1 Exception:", e)
+        item = db_response['Item']
+        return True, item
+    except Exception:
+        message = {'text': f'Witch/wizard _*{wizard}*_ is not listed as a *Hogwarts Alumni*, most likely to be enrolled in _Beauxbatons_ or _Durmstrang_ '}
+        return False, message
 
+
+def allocate_points(wizard, points, assigner):
     points = clean_points(points)
     print("clean points", points)
-    wizard_found = check_user_permission(wizard)
-    points_action = f'awarded _*{points}*_ points to {wizard}' if points > 0 else f'removed _*{points}*_ points from {wizard}'
+    wizard_found, wizard_info = get_wizard(wizard)
+    print("wizard found", wizard_found)
+    points_action = f'awarded _*{points}*_ points to _*{wizard}*_' if points > 0 else f'removed _*{points}*_ points from {wizard}'
 
     if wizard_found:
-        update_points = update_item(
+        update_points = update_wizard_points(
             wizard,
             expression_attributes={':p': points},
             update_expression='set points = points +:p',
             return_values="ALL_NEW"
          )
 
-        update_to_zero = update_item(
+        update_to_zero = update_wizard_points(
             wizard,
             expression_attributes={':min': 0},
             condition_expression='points < :min',
@@ -250,8 +251,11 @@ def allocate_points(wizard, points, assigner):
 
         message = update_to_zero if update_to_zero else update_points
         total_points = message['Attributes']['points']
-        message = {'text': f'{assigner} has {points_action}, new total is _*{total_points}*_ points'}
+        message = {'text': f'_*{assigner}*_ has {points_action}, new total is _*{total_points}*_ points'}
         return message
+    else:
+        return wizard_info
+
 
 
 def lambda_handler(event, context):
