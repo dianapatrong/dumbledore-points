@@ -56,11 +56,6 @@ def parse_slack_message(text):
         points = -possible_points[0] if possible_points[0] > 0 else possible_points[0]
     else:
         points = possible_points[0]
-
-    print("give_points ", give_points)
-    print("possible_points", possible_points)
-    print("points ", points)
-
     return wizards, points
 
 
@@ -152,10 +147,8 @@ def get_wizard_points(wizard):
 
 def allocate_points(wizard, points, assigner):
     points = clean_points(points)
-    print("clean points", points)
     wizard_found, wizard_info = get_item(wizard)
-    print("wizard found", wizard_found)
-    points_action = f'awarded _*{points}*_ points to _*{wizard}*_' if points > 0 else f'removed _*{points}*_ points from {wizard}'
+    points_action = f'awarded *{points}* points to *{wizard}*' if points > 0 else f'removed *{points}* points from {wizard}'
 
     if wizard_found:
         update_points = update_item(
@@ -175,14 +168,13 @@ def allocate_points(wizard, points, assigner):
 
         message = update_to_zero if update_to_zero else update_points
         total_points = message['Attributes']['points']
-        message = {'text': f'_*{assigner}*_ has {points_action}, new total is _*{total_points}*_ points'}
+        message = {'text': f'_*{assigner}* has {points_action}, new total is *{total_points}* points_'}
         return message
     else:
         return wizard_info
 
 
 def process_point_allocation(assigner, text):
-    print("allocate points text ", text)
     wizards, points = parse_slack_message(text)
     agg_messages = []
     if wizards:
@@ -251,7 +243,6 @@ def lambda_handler(event, context):
         assigner = params['user_name'][0]
         point_allocators = ['give', 'remove', '+', '-']
         matching = [word for word in text if any(s in word for s in point_allocators)]
-        print("matching", matching)
 
         # Display leaderboard for all houses
         if 'leaderboard' in text:
