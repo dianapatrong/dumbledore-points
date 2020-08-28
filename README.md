@@ -4,26 +4,24 @@
 House points are awarded to students at Hogwarts that do good deeds, correctly answer a question in class, 
 or win a Quidditch Match. They can also be taken away for rule-breaking.
 
-With this tutorial we will create an Slack app where you can give points to your mates for taking time to help you out but also you can 
+I created an Slack app where you can give points to your mates for taking time to help you out but also you can 
 take them away. 
 
-    _"While you are at Hogwarts, your triumphs will earn your House points, while any rule-breaking will lose House points. 
+    "While you are at Hogwarts, your triumphs will earn your House points, while any rule-breaking will lose House points. 
     At the end of the year, the House with the most points is awarded the House Cup, a great honor. I hope each of you will be a credit to whichever 
-    House becomes yours."_
+    House becomes yours."
     -- Minerva McGonagall 
 
 ## Step-by-step
 Originally I started to develop this app following the steps below, but since it was too tedious to copy the lambda function
 each time to test I used **[AWS SAM](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html)**, this allowed
-me to test locally. 
-
-AWS SAM will package and upload the deployment artifacts generated to an Amazon S3 bucket (created by AWS SAM CLI),
-and will deploy the application using CloudFormation
+me to test locally, and to deploy it was really simple, AWS SAM packages and upload the deployment artifacts generated to an Amazon S3 bucket (created by AWS SAM CLI),
+and then deploys the application using CloudFormation, so the only thing you need to create beforehand is the dynamoDB table.
 
 ### Step-1: Create a database
 **AWS Console** -> **Services** -> **DynamoDB** -> **Create table**
 
-* **Table name**: DumbledorePoints
+* **Table name**: Hogwarts_Alumni
 * **Primary Key**: username
 * Click **Create**
 
@@ -35,6 +33,11 @@ and will deploy the application using CloudFormation
 * **Function name**: DumbledorePoints
 * **Runtime**: Python 3.6
 * **Create function**
+
+> NOTE: Since I used AWS SAM, I did not have to copy my code directly into the AWS Lambda designer
+> but if you don't want to do it with SAM you will need to create a zip package to upload it directly 
+> or re-arrange the functions into a single file, for more inforrmation you can go to 
+> [AWS Lambda deployment package in Python](https://docs.aws.amazon.com/lambda/latest/dg/python-package.html).
 
 #### Modify IAM Role
 Within the function go to **Permissions** and click on the **Role name**, this will take you to **Identity and Access Management**
@@ -58,8 +61,12 @@ Go to `https://api.slack.com/apps` and click on **Create new app**
 * **Create App**
 
 After creating the app select **Slash commands** -> **Create New Command**
+* **Command**: /dumbledore
+* **Request URL**: This will be the API Gateway url
+* **Short description**: type "/dumbledore" to get the instructions
+* Click **Save**
 
-Under **Basic Information**, look for **Signing Secret**, go to the Lambda Function
+Under **Basic Information**, look for **Signing Secret**, go to the Lambda Function in the AWS Management Console
 and add that as an environment variable
 ** **Name**: SLACK_KEY
 ** **Value**: < your secret > 
