@@ -1,15 +1,11 @@
 import json
-import urllib
-import time
 import os
 import hmac
 import hashlib
-import boto3
 from urllib.parse import parse_qs
 import random
+from dynamo_db_helper import *
 
-dynamo = boto3.resource('dynamodb')
-HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
 
 HEADMASTER = ['dianapatrong']
 HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
@@ -70,23 +66,22 @@ def parse_slack_message(text):
 
 def get_house_points(house):
     """Iterates over the HOUSES and save their points into a dictionary"""
-    try:
-        db_response = HOGWARTS_ALUMNI_TABLE.scan(
-            FilterExpression=boto3.dynamodb.conditions.Attr('house').eq(house)
-        )
-        items = db_response['Items']
-        total_points = int(sum([i['points'] for i in items]))
+    scan_success, scanned_wizards = scan_info(house)
+
+    if scan_success:
+        total_points = int(sum([wizard['points'] for wizard in scanned_wizards]))
         house_members = {}
-        for i in items:
-            house_members[i['username']] = i['points']
+        for wizard in scanned_wizards:
+            house_members[wizard['username']] = wizard['points']
+
         members_by_points = {member: house_members[member] for member in sorted(house_members, key=house_members.get, reverse=True)}
         house_members_leaderboard = ""
         for member, points in members_by_points.items():
             house_members_leaderboard += f'_{member}_: {points}\n'
         message = {'text': f'_*{house.capitalize()}*_ has *{total_points}* points', 'attachments': [{"text": house_members_leaderboard}]}
-        return message
-    except Exception as e:
-        return {'text': f'Something went wrong when getting the house points: {e}'}
+    else:
+        message = {'text': f'Something went wrong when getting the house points'}
+    return message
 
 
 def format_points(house_points):
@@ -100,13 +95,8 @@ def format_points(house_points):
 def get_house_leaderboard():
     house_points = {}
     for house in HOGWARTS_HOUSES:
-        try:
-            db_response = HOGWARTS_ALUMNI_TABLE.scan(
-                FilterExpression=boto3.dynamodb.conditions.Attr('house').eq(house.lower()))
-            items = db_response['Items']
-            house_points[house] = int(sum([i['points'] for i in items]))
-        except Exception as e:
-            return e
+        scan_success, scanned_wizards = scan_info(house)
+        house_points[house] = int(sum([wizard['points'] for wizard in scanned_wizards]))
     return format_points(house_points)
 
 
@@ -119,34 +109,14 @@ def parse_potential_house(house):
 
 
 def create_wizard(wizard, house):
-    wizard_found = check_user_permission(wizard)
+    wizard_found, wizard_info = get_item(wizard)
     wizard = remove_at(wizard)
     if not wizard_found:
-        HOGWARTS_ALUMNI_TABLE.put_item(
-            Item={
-                'username': wizard,
-                'house': house,
-                'points': 0
-            }
-        )
+        put_item(wizard, house)
         message = {'text': f'Welcome _*{wizard}*_ to _*{house}*_'}  # change username to full name eventually
     else:
         message = {'text': f'Wizard _*{wizard}*_ already exists'}
     return message
-
-
-def check_user_permission(wizard):
-    try:
-        db_response = HOGWARTS_ALUMNI_TABLE.get_item(
-            Key={
-                'username': wizard
-            }
-        )
-        item = db_response['Item']
-        return True
-    except Exception as e:
-        print("check_user_permission Exception:", e)
-        return False
 
 
 def display_instructions():
@@ -170,40 +140,8 @@ def clean_points(points):
     return max(-2000, points) if points < 0 else min(2000, points)
 
 
-def update_wizard_points(wizard, update_expression=None, condition_expression='', expression_attributes=None, return_values=None):
-    if not condition_expression:
-        try:
-            db_response_2 = HOGWARTS_ALUMNI_TABLE.update_item(
-                Key={
-                    'username': wizard
-                },
-                UpdateExpression=update_expression,
-                ExpressionAttributeValues=expression_attributes,
-                ReturnValues=return_values
-            )
-            return db_response_2
-        except Exception as e:
-            print("Allocate points Exception", e)
-            return False
-    else:
-        try:
-            db_response_2 = HOGWARTS_ALUMNI_TABLE.update_item(
-                Key={
-                    'username': wizard
-                },
-                UpdateExpression=update_expression,
-                ConditionExpression=condition_expression,
-                ExpressionAttributeValues=expression_attributes,
-                ReturnValues=return_values
-            )
-            return db_response_2
-        except Exception as e:
-            print("Allocate points Exception", e)
-            return False
-
-
 def get_wizard_points(wizard):
-    wizard_found, wizard_info = get_wizard(wizard)
+    wizard_found, wizard_info = get_item(wizard)
     if wizard_found:
         points = wizard_info['points']
         house = wizard_info['house'].capitalize()
@@ -212,36 +150,22 @@ def get_wizard_points(wizard):
         return wizard_info
 
 
-def get_wizard(wizard):
-    try:
-        db_response = HOGWARTS_ALUMNI_TABLE.get_item(
-            Key={
-                'username': wizard
-            }
-        )
-        item = db_response['Item']
-        return True, item
-    except Exception:
-        message = {'text': f'Witch/wizard _*{wizard}*_ is not listed as a *Hogwarts Alumni*, most likely to be enrolled in _Beauxbatons_ or _Durmstrang_ '}
-        return False, message
-
-
 def allocate_points(wizard, points, assigner):
     points = clean_points(points)
     print("clean points", points)
-    wizard_found, wizard_info = get_wizard(wizard)
+    wizard_found, wizard_info = get_item(wizard)
     print("wizard found", wizard_found)
     points_action = f'awarded _*{points}*_ points to _*{wizard}*_' if points > 0 else f'removed _*{points}*_ points from {wizard}'
 
     if wizard_found:
-        update_points = update_wizard_points(
+        update_points = update_item(
             wizard,
             expression_attributes={':p': points},
             update_expression='set points = points +:p',
             return_values="ALL_NEW"
          )
 
-        update_to_zero = update_wizard_points(
+        update_to_zero = update_item(
             wizard,
             expression_attributes={':min': 0},
             condition_expression='points < :min',
