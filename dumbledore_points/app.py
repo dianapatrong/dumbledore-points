@@ -151,13 +151,13 @@ def check_user_permission(wizard):
 
 def display_instructions():
     instructions = {
-        '- set house': '/dumbledore set house house_name _*or*_ /dumbledore set house sorting_hat\n',
+        '- set house': '/dumbledore set house house_name _*or*_ /dumbledore set house :sorting-hat:\n',
         '- leaderboard': '/dumbledore leaderboard\n',
         '- house leaderboard': '/dumbledore house_name\n',
         '- give points': '/dumbledore give 10 points to @wizard _*or*_ /dumbledore +10 @wizard\n',
         '- remove points': '/dumbledore remove 10 points from @wizard _*or*_ /dumbledore -10 @wizard\n',
         'HINT': f'\n House names are  _*{", ".join(HOGWARTS_HOUSES)}*_,  but if you are not sure which house do you'
-                f' belong to, you can set it to _*sorting_hat*_ and that will do the job'
+                f' belong to, you can set it to :sorting-hat: and that will do the job'
     }
 
     dumbledore_orders = ""
@@ -282,7 +282,7 @@ def process_point_allocation(assigner, text):
 def set_hogwarts_house(text, assigner):
     hogwarts_house = None
     if len(text) == 3:
-        if text[2] == 'sorting_hat':
+        if text[2] == ':sorting-hat:':
             hogwarts_house = random.choice(HOGWARTS_HOUSES)
         else:
             hogwarts_house = parse_potential_house(text[2])
@@ -293,7 +293,7 @@ def set_hogwarts_house(text, assigner):
         message = {'text': f'_What do you think this is? Magic? I do not know which house do you want to be in_'}
     else:
         message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
-                           f' *{", ".join(HOGWARTS_HOUSES)}* or *sorting_hat*_'}
+                           f' *{", ".join(HOGWARTS_HOUSES)}* or :sorting-hat:'}
     # ToDo: Add validation for when user type "set house" but it already belongs to a house, message displays that doesn't know which house to put him in
     return message
 
@@ -310,6 +310,9 @@ def lambda_handler(event, context):
     if 'text' in params:
         text = params['text'][0].replace('\xa0', ' ').split(" ")
         assigner = params['user_name'][0]
+        point_allocators = ['give', 'remove', '+', '-']
+        matching = [word for word in text if any(s in word for s in point_allocators)]
+        print("matching", matching)
 
         # Display leaderboard for all houses
         if 'leaderboard' in text:
@@ -317,19 +320,25 @@ def lambda_handler(event, context):
             message = {'text': f'{house_points}'}
 
         # Display leaderboard for the house requested
-        if len(text) == 1 and text[0].lower() in HOGWARTS_HOUSES:
+        elif len(text) == 1 and text[0].lower() in HOGWARTS_HOUSES:
             message = get_house_points(text[0].lower())
 
         # Set wizard to requested house
-        if ['set', 'house'] == text[0:2]:
+        elif ['set', 'house'] == text[0:2]:
             message = set_hogwarts_house(text, assigner)
 
         # Allocate points
-        point_allocators = ['give', 'remove', '+', '-']
-        matching = [word for word in text if any(s in word for s in point_allocators)]
-        print("matching", matching)
-        if matching:
+        elif matching:
             message = process_point_allocation(assigner, text)
+
+        else:
+            random_quotes = [
+                'What happened down in the dungeons between you and Professor Quirrell is a complete secret, so, naturally the whole school knows.',
+                'One can never have enough socks',
+                f'It is our choices, *{assigner}*, that show what we truly are, far more than our abilities.',
+                f'It is a curious thing, *{assigner}*, but perhaps those who are best suited to power are those who have never sought it.'
+            ]
+            message = {'text': f'_{random.choice(random_quotes)}_'}
 
     else:
         instructions = display_instructions()
