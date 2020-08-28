@@ -6,6 +6,7 @@ import hmac
 import hashlib
 import boto3
 from urllib.parse import parse_qs
+import requests
 
 dynamo = boto3.resource('dynamodb')
 HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
@@ -125,9 +126,9 @@ def create_wizard(wizard, house):
                 'points': 0
             }
         )
-        message = {'text': f'Welcome {wizard} to {house}'}  # change username to full name eventually
+        message = {'text': f'Welcome _*{wizard}*_ to _*{house}*_'}  # change username to full name eventually
     else:
-        message = {'text': f'Wizard {wizard} already exists'}
+        message = {'text': f'Wizard _*{wizard}*_ already exists and belongs to _*{house.capitalize()}*_'}
     return message
 
 
@@ -146,21 +147,19 @@ def check_user_permission(wizard):
 
 
 def display_instructions():
-    # /dumbledore set house $house_name
-    # /dumbledore leaderboard
-    # /dumbledore $house_name
     instructions = {
-        'Set house': '/dumbledore set house house_name\n',
-        'Leaderboard': '/dumbledore leaderboard\n',
-        'House Leaderboard': '/dumbledore house_name\n',
-        'Give points': '/dumbledore give 10 points to @wizard _*or*_ /dumbledore +10 @wizard\n',
-        'Remove points': '/dumbledore remove 10 points from @wizard _*or*_ /dumbledore -10 @wizard\n',
-        'house_names': f'\n *HINT*: House names are  _*{", ".join(HOGWARTS_HOUSES)}*_'
+        '- set house': '/dumbledore set house <house>\n',
+        '- leaderboard': '/dumbledore leaderboard\n',
+        '- house leaderboard': '/dumbledore <house>\n',
+        '- give points': '/dumbledore give 10 points to @wizard _*or*_ /dumbledore +10 @wizard\n',
+        '- remove points': '/dumbledore remove 10 points from @wizard _*or*_ /dumbledore -10 @wizard\n',
+        'HINT': f'\n House names are  _*{", ".join(HOGWARTS_HOUSES)}*_,  but if you are not sure which house do you'
+                f' belong to, you can set it to random and that will do the job'
     }
 
     dumbledore_orders = ""
     for order, command in instructions.items():
-        dumbledore_orders += f'{command}'
+        dumbledore_orders += f'*{order}*: {command}'
     return dumbledore_orders
 
 
@@ -235,7 +234,6 @@ def allocate_points(wizard, points, assigner):
 
 
 def lambda_handler(event, context):
-    print("event: ", event)
     message = {}
     headers = event['headers']
     body = event['body']
@@ -249,7 +247,6 @@ def lambda_handler(event, context):
         assigner = params['user_name'][0]
 
         # Display leaderboard for all houses
-        #if any('leaderboard' in word for word in text):
         if 'leaderboard' in text:
             house_points = get_house_leaderboard()
             message = {'text': f'{house_points}'}
@@ -260,11 +257,16 @@ def lambda_handler(event, context):
 
         # Set wizard to requested house
         if ['set', 'house'] == text[0:2]:
-            hogwarts_house = parse_potential_house(text[2])
+            if text[2] == 'random':
+                sorting_hat = requests.get('https://www.potterapi.com/v1/sortingHat')
+                hogwarts_house = sorting_hat.text
+            else:
+                hogwarts_house = parse_potential_house(text[2])
             if hogwarts_house is not None:
                 message = create_wizard(assigner, hogwarts_house)
             else:
-                message = {'text': f'Harry Potter was released June 26, 1997 you should know the house names by now: _*{", ".join(HOGWARTS_HOUSES)}*_'}
+                message = {'text': f'Are you a *muggle* or what? Spell the house name correctly:'
+                                   f' _*{", ".join(HOGWARTS_HOUSES)}*_ or _*random*_'}
 
         # Allocate points
         point_allocators = ['give', 'remove', '+', '-']
@@ -278,7 +280,7 @@ def lambda_handler(event, context):
                 # Avoid wizards from granting points to themselves
                 if wizard == assigner and assigner not in HEADMASTER:
                     message = get_wizard_points(wizard)
-                    message['attachments'] = [{'text': '_Are you awarding points to yourself?_ :shame:'}]
+                    message['attachments'] = [{'text': '_Are you awarding points to yourself? That is like the *Forbidden Forest*: off limits_ :shame:'}]
                 else:
                     agg_messages.append(allocate_points(wizard, points, assigner))
 
@@ -286,7 +288,9 @@ def lambda_handler(event, context):
                 message = {'text': '\n'.join(m_points['text'] for m_points in agg_messages)}
     else:
         instructions = display_instructions()
-        message = {'text': f'First add yourself to your favorite house,  then you can start giving or taking points right away :boom: ', 'attachments': [{"text": instructions}]}
+        message = {'text': f'First add yourself to your favorite house :european_castle:,  '
+                           f'then you can start giving or taking points right away '
+                           f':male_mage::skin-tone-2:  :deathly-hallows: ', 'attachments': [{"text": instructions}]}
 
     message["response_type"] = "in_channel"
 
