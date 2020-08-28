@@ -125,7 +125,7 @@ def create_wizard(wizard, house):
 def display_instructions():
     instructions = {
         '- set house': '/dumbledore set house house_name _*or*_ /dumbledore set house :sorting-hat:\n',
-        '- set title': '/dumbledore set title your name and whatever you wanna be called like Hogwarts Caretaker, be creative',
+        '- set title': '/dumbledore set title your name and whatever you wanna be called like Hogwarts Caretaker, be creative\n',
         '- leaderboard': '/dumbledore leaderboard\n',
         '- house leaderboard': '/dumbledore house_name\n',
         '- give points': '/dumbledore give 10 points to @wizard _*or*_ /dumbledore +10 @wizard\n',

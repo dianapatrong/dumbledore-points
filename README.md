@@ -75,3 +75,25 @@ and add that as an environment variable
 FOR MORE INFORMATION: 
 * https://api.slack.com/authentication/verifying-requests-from-slack
 * https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-hello-world.html
+
+
+## How to use
+There are different order that you can give with the same slash command `/dumbledore`, the first thing you need 
+to do is to enroll to Hogwarts and to do so you can use the following commands: 
+
+* `/dumbledore set house gryffindor` if you know which house you belong to
+* `/dumbledore set house :sorting-hat:` if you want the sorting hat to take care of your house allocation
+
+After you are enrolled you can either start giving or taking points away from your mates or you can optionally set a
+title for yourself:
+
+* `/dumbledore set title Diana Patron, Advisor to the Minister for Magic ` to set a cool title next to your name
+* `/dumbledore give 10 points to @wizard1 @wizard2` or  `/dumbledore +10 @wizard1 @wizard2` to give points to 1 or more wizards
+* `/dumbledore remove 10 points from @wizard1 @wizard2` or  `/dumbledore -10 @wizard1 @wizard2` to remove points from 1 or more wizards
+
+To display the leaderboards:
+
+* `/dumbledore leaderboard` will display the leaderboard for the four Hogwarts houses
+* `/dumbledore gryffindor` will display the total of points of the house and the members leaderboard  
+
+If you mess something up you will most likely end with a random message from dumbledore.
