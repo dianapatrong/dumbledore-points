@@ -1,2 +1,2 @@
-boto3
-requests
+boto3==1.14.50
+pytest==6.0.1

@@ -6,7 +6,7 @@ import hmac
 import hashlib
 import boto3
 from urllib.parse import parse_qs
-import requests
+import random
 
 dynamo = boto3.resource('dynamodb')
 HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
@@ -283,8 +283,7 @@ def set_hogwarts_house(text, assigner):
     hogwarts_house = None
     if len(text) == 3:
         if text[2] == 'sorting_hat':
-            sorting_hat = requests.get('https://www.potterapi.com/v1/sortingHat')
-            hogwarts_house = sorting_hat.text.replace('"', '').lower()
+            hogwarts_house = random.choice(HOGWARTS_HOUSES)
         else:
             hogwarts_house = parse_potential_house(text[2])
 
