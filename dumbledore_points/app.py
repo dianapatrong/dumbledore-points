@@ -238,8 +238,8 @@ def lambda_handler(event, context):
     headers = event['headers']
     body = event['body']
 
-    if not verify_request(event):
-        return respond(None,  {"text":"Message verification failed"})
+    #if not verify_request(event):
+    #    return respond(None,  {"text":"Message verification failed"})
 
     params = parse_qs(event['body'])
     if 'text' in params:
@@ -261,7 +261,7 @@ def lambda_handler(event, context):
             if len(text) == 3:
                 if text[2] == 'random':
                     sorting_hat = requests.get('https://www.potterapi.com/v1/sortingHat')
-                    hogwarts_house = sorting_hat.text
+                    hogwarts_house = sorting_hat.text.replace('"', '').lower()
                 else:
                     hogwarts_house = parse_potential_house(text[2])
 
