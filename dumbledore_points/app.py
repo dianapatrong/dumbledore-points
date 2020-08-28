@@ -45,6 +45,9 @@ def parse_slack_message(text):
     give_points = True if [word for word in text if any(s in word for s in ['give', '+'])] else False
     wizards = [remove_at(name) for name in text if name.startswith('@')]
     possible_points = []
+
+    if not wizards:
+        return False, False
     for num in text:
         try:
             possible_points.append(int(num))
@@ -148,9 +151,9 @@ def check_user_permission(wizard):
 
 def display_instructions():
     instructions = {
-        '- set house': '/dumbledore set house <house>\n',
+        '- set house': '/dumbledore set house house _*or*_ /dumbledore set house random\n',
         '- leaderboard': '/dumbledore leaderboard\n',
-        '- house leaderboard': '/dumbledore <house>\n',
+        '- house leaderboard': '/dumbledore house\n',
         '- give points': '/dumbledore give 10 points to @wizard _*or*_ /dumbledore +10 @wizard\n',
         '- remove points': '/dumbledore remove 10 points from @wizard _*or*_ /dumbledore -10 @wizard\n',
         'HINT': f'\n House names are  _*{", ".join(HOGWARTS_HOUSES)}*_,  but if you are not sure which house do you'
@@ -272,8 +275,7 @@ def lambda_handler(event, context):
             else:
                 message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
                                    f' *{", ".join(HOGWARTS_HOUSES)}* or *random*_'}
-            print("Len(texT)", len(text))
-            print("MESSAGE", message)
+            #ToDo: Add validation for when user type "set house" but it already belongs to a house, message displays that doesn't know which house to put him in
 
         # Allocate points
         point_allocators = ['give', 'remove', '+', '-']
@@ -283,16 +285,21 @@ def lambda_handler(event, context):
             print("allocate points text ", text)
             wizards, points = parse_slack_message(text)
             agg_messages = []
-            for wizard in wizards:
-                # Avoid wizards from granting points to themselves
-                if wizard == assigner and assigner not in HEADMASTER:
-                    message = get_wizard_points(wizard)
-                    message['attachments'] = [{'text': '_Are you awarding points to yourself? That is like the *Forbidden Forest*: off limits_ :shame:'}]
-                else:
-                    agg_messages.append(allocate_points(wizard, points, assigner))
+            if wizards:
+                for wizard in wizards:
+                    # Avoid wizards from granting points to themselves
+                    if wizard == assigner and assigner not in HEADMASTER:
+                        message = get_wizard_points(wizard)
+                        message['attachments'] = [{'text': '_Are you awarding points to yourself? '
+                                                           'That is like the *Forbidden Forest*: off limits_ :shame:'}]
+                    else:
+                        agg_messages.append(allocate_points(wizard, points, assigner))
 
-            if agg_messages:
-                message = {'text': '\n'.join(m_points['text'] for m_points in agg_messages)}
+                if agg_messages:
+                    message = {'text': '\n'.join(m_points['text'] for m_points in agg_messages)}
+            else:
+                message = {'text': f'_What do you think this is? Magic? '
+                                   f'I do not know which wizard do you want to give points to_'}
     else:
         instructions = display_instructions()
         message = {'text': f'First add yourself to your favorite house :european_castle:,  '

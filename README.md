@@ -14,9 +14,13 @@ take them away.
 
 ## Step-by-step
 Originally I started to develop this app following the steps below, but since it was too tedious to copy the lambda function
-each time I used **AWS SAM**. 
+each time to test I used **[AWS SAM](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html)**, this allowed
+me to test locally. 
 
-## Step-1: Create a database
+AWS SAM will package and upload the deployment artifacts generated to an Amazon S3 bucket (created by AWS SAM CLI),
+and will deploy the application using CloudFormation
+
+### Step-1: Create a database
 **AWS Console** -> **Services** -> **DynamoDB** -> **Create table**
 
 * **Table name**: DumbledorePoints
@@ -24,7 +28,7 @@ each time I used **AWS SAM**.
 * Click **Create**
 
 
-## Step-2: Create a Lambda function
+### Step-2: Create a Lambda function
 **AWS Console** -> **Services** -> **Lambda** -> **Create function**
 
 * Select **Author from scratch**
@@ -39,14 +43,14 @@ Within the function go to **Permissions** and click on the **Role name**, this w
     - [x] AmazonDynamoDBFullAccess
     - [x] CloudWatchFullAccess
 
-## Step-3: Create an API Gateway 
+### Step-3: Create an API Gateway 
 On the lambda function, click on **Add trigger**
 * Select **API Gateway**
 * Select **Create an API**
 * **API Type**: REST API 
 * Click **Add**
 
-## Step-4: Slack integration
+### Step-4: Slack integration
 Go to `https://api.slack.com/apps` and click on **Create new app**
 
 * **App Name**: Dumbledore Points
