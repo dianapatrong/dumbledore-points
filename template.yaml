@@ -17,12 +17,14 @@ Resources:
       CodeUri: dumbledore_points/
       Handler: app.lambda_handler
       Runtime: python3.6
+      Policies: AmazonDynamoDBFullAccess
       Events:
         DumbledorePoints:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
             Path: /dumbledore
             Method: get
+
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
@@ -34,6 +36,6 @@ Outputs:
   DumbledorePoints:
     Description: "Dumbledore Points Lambda Function ARN"
     Value: !GetAtt DumbledorePointsFunction.Arn
-  DumbledorePointsnIamRole:
-    Description: "Implicit IAM Role created for Dumbledore Points function"
-    Value: !GetAtt DumbledorePointsRole.Arn
+  #DumbledorePointsnIamRole:
+    #Description: "Implicit IAM Role created for Dumbledore Points function"
+    #Value: !GetAtt DumbledorePointsRole.Arn
