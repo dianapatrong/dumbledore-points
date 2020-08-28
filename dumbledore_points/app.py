@@ -11,7 +11,7 @@ import requests
 dynamo = boto3.resource('dynamodb')
 HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
 
-HEADMASTER = ['vahev']
+HEADMASTER = ['dianapatrong']
 HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
 PREFIXES = ["In the lead is ", "Second place is ", "Third place is ", "Fourth place is "]
 
@@ -185,6 +185,38 @@ def clean_points(points):
     return max(-2000, points) if points < 0 else min(2000, points)
 
 
+def update_item(wizard, update_expression=None, condition_expression='', expression_attributes=None, return_values=None):
+    if not condition_expression:
+        try:
+            db_response_2 = HOGWARTS_ALUMNI_TABLE.update_item(
+                Key={
+                    'username': wizard
+                },
+                UpdateExpression=update_expression,
+                ExpressionAttributeValues=expression_attributes,
+                ReturnValues=return_values
+            )
+            return db_response_2
+        except Exception as e:
+            print("Allocate points Exception", e)
+            return False
+    else:
+        try:
+            db_response_2 = HOGWARTS_ALUMNI_TABLE.update_item(
+                Key={
+                    'username': wizard
+                },
+                UpdateExpression=update_expression,
+                ConditionExpression=condition_expression,
+                ExpressionAttributeValues=expression_attributes,
+                ReturnValues=return_values
+            )
+            return db_response_2
+        except Exception as e:
+            print("Allocate points Exception", e)
+            return False
+
+
 def allocate_points(wizard, points, assigner):
     try:
         db_response_1 = HOGWARTS_ALUMNI_TABLE.get_item(
@@ -201,36 +233,22 @@ def allocate_points(wizard, points, assigner):
     points_action = f'awarded _*{points}*_ points to {wizard}' if points > 0 else f'removed _*{points}*_ points from {wizard}'
 
     if wizard_found:
-        try:
-            db_response_2 = HOGWARTS_ALUMNI_TABLE.update_item(
-                Key={
-                    'username': wizard
-                },
-                UpdateExpression='set points = points +:p',
-                ExpressionAttributeValues={
-                    ':p': points
-                },
-                ReturnValues="ALL_NEW"
-            )
-        except Exception as e:
-            print("Allocate points Exception", e)
+        update_points = update_item(
+            wizard,
+            expression_attributes={':p': points},
+            update_expression='set points = points +:p',
+            return_values="ALL_NEW"
+         )
 
-        try:
-            db_response_3 = HOGWARTS_ALUMNI_TABLE.update_item(
-                Key={
-                    'username': wizard
-                },
-                UpdateExpression="set points = :min",
-                ConditionExpression="points < :min",
-                ExpressionAttributeValues={
-                    ':min': 0
-                },
-                ReturnValues="UPDATED_NEW"
-            )
-            message = db_response_3
-        except Exception as e:
-            message = db_response_2
+        update_to_zero = update_item(
+            wizard,
+            expression_attributes={':min': 0},
+            condition_expression='points < :min',
+            update_expression='set points = :min',
+            return_values="UPDATED_NEW"
+        )
 
+        message = update_to_zero if update_to_zero else update_points
         total_points = message['Attributes']['points']
         message = {'text': f'{assigner} has {points_action}, new total is _*{total_points}*_ points'}
         return message
