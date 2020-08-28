@@ -71,9 +71,13 @@ def get_house_points(house):
         total_points = int(sum([wizard['points'] for wizard in scanned_wizards]))
         house_members = {}
         for wizard in scanned_wizards:
-            house_members[wizard['username']] = wizard['points']
+            if 'title' in wizard:
+                house_members[wizard['title']] = wizard['points']
+            else:
+                house_members[wizard['username']] = wizard['points']
 
         members_by_points = {member: house_members[member] for member in sorted(house_members, key=house_members.get, reverse=True)}
+
         house_members_leaderboard = ""
         for member, points in members_by_points.items():
             house_members_leaderboard += f'_{member}_: {points}\n'
@@ -121,6 +125,7 @@ def create_wizard(wizard, house):
 def display_instructions():
     instructions = {
         '- set house': '/dumbledore set house house_name _*or*_ /dumbledore set house :sorting-hat:\n',
+        '- set title': '/dumbledore set title your name and whatever you wanna be called like Hogwarts Caretaker, be creative',
         '- leaderboard': '/dumbledore leaderboard\n',
         '- house leaderboard': '/dumbledore house_name\n',
         '- give points': '/dumbledore give 10 points to @wizard _*or*_ /dumbledore +10 @wizard\n',
@@ -144,7 +149,8 @@ def get_wizard_points(wizard):
     if wizard_found:
         points = wizard_info['points']
         house = wizard_info['house'].capitalize()
-        return {'text': f'_*{wizard}*_ has *{points}* points contributing to _{house}_'}
+        wizard_name = wizard['title'] if 'title' in wizard else wizard
+        return {'text': f'_*{wizard_name}*_ has *{points}* points contributing to _{house}_'}
     else:
         return wizard_info
 
@@ -218,6 +224,17 @@ def set_hogwarts_house(text, assigner):
     return message
 
 
+def set_wizards_title(text, wizard):
+    title = ' '.join(text[2:])
+    update_item(
+        wizard,
+        expression_attributes={':t': title},
+        update_expression='set title = :t',
+        return_values="UPDATED_NEW"
+    )
+    return {'text': f'_Your title has been updated to *{title}*_'}
+
+
 def send_random_quote(assigner):
     random_quotes = [
         'What happened down in the dungeons between you and Professor Quirrell is a complete secret, so, naturally the whole school knows.',
@@ -235,9 +252,6 @@ def send_random_quote(assigner):
 
 def lambda_handler(event, context):
     message = {}
-    headers = event['headers']
-    body = event['body']
-
     #if not verify_request(event):
     #    return respond(None,  {"text":"Message verification failed"})
 
@@ -260,6 +274,9 @@ def lambda_handler(event, context):
         # Set wizard to requested house
         elif ['set', 'house'] == text[0:2]:
             message = set_hogwarts_house(text, assigner)
+
+        elif ['set', 'title'] == text[0:2] and len(text) > 2:
+            message = set_wizards_title(text, assigner)
 
         # Allocate points
         elif matching:

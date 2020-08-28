@@ -7,7 +7,7 @@ HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
 def update_item(wizard, update_expression=None, condition_expression='', expression_attributes=None, return_values=None):
     if not condition_expression:
         try:
-            db_response_2 = HOGWARTS_ALUMNI_TABLE.update_item(
+            db_response = HOGWARTS_ALUMNI_TABLE.update_item(
                 Key={
                     'username': wizard
                 },
@@ -15,13 +15,13 @@ def update_item(wizard, update_expression=None, condition_expression='', express
                 ExpressionAttributeValues=expression_attributes,
                 ReturnValues=return_values
             )
-            return db_response_2
+            return db_response
         except Exception as e:
             print("Allocate points Exception", e)
             return False
     else:
         try:
-            db_response_2 = HOGWARTS_ALUMNI_TABLE.update_item(
+            db_response = HOGWARTS_ALUMNI_TABLE.update_item(
                 Key={
                     'username': wizard
                 },
@@ -30,7 +30,7 @@ def update_item(wizard, update_expression=None, condition_expression='', express
                 ExpressionAttributeValues=expression_attributes,
                 ReturnValues=return_values
             )
-            return db_response_2
+            return db_response
         except Exception as e:
             print("Allocate points Exception", e)
             return False
