@@ -10,7 +10,7 @@ from dynamo_db_helper import *
 HEADMASTER = ['dianapatrong']
 HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
 PREFIXES = ["In the lead is ", "Second place is ", "Third place is ", "Fourth place is "]
-CHANNEL_ID = os.environ['CHANNEL_ID']
+# CHANNEL_ID = os.environ['CHANNEL_ID']
 
 def verify_request(event):
     body = event['body']
@@ -67,11 +67,9 @@ def get_house_points(house):
         total_points = int(sum([wizard['points'] for wizard in scanned_wizards]))
         house_members = {}
         for wizard in scanned_wizards:
-            if 'title' in wizard:
-                house_members[wizard['title']] = wizard['points']
-            else:
-                house_members[wizard['username']] = wizard['points']
+            house_members[get_title(wizard)] = wizard['points']
 
+        print("HOUSE MEMBERS", house_members)
         members_by_points = {member: house_members[member] for member in sorted(house_members, key=house_members.get, reverse=True)}
 
         house_members_leaderboard = ""
@@ -125,8 +123,8 @@ def display_instructions():
         '- leaderboard': '/dumbledore leaderboard\n',
         '- house leaderboard': '/dumbledore house_name\n',
         '- give points': '/dumbledore give 10 points to @wizard _*or*_ /dumbledore +10 @wizard\n',
-        '- remove points': '/dumbledore remove 10 points from @wizard _*or*_ /dumbledore -10 @wizard\n',
-        'HINT': f'\n House names are  _*{", ".join(HOGWARTS_HOUSES)}*_,  but if you are not sure which house do you'
+        '- remove points': '/dumbledore remove 10 points from @wizard _*or*_ /dumbledore -10 @wizard\n\n',
+        'HINT': f' House names are  _*{", ".join(HOGWARTS_HOUSES)}*_,  but if you are not sure which house do you'
                 f' belong to, you can set it to :sorting-hat: and that will do the job'
     }
 
@@ -145,35 +143,44 @@ def get_wizard_points(wizard):
     if wizard_found:
         points = wizard_info['points']
         house = wizard_info['house'].capitalize()
-        wizard_name = wizard['title'] if 'title' in wizard else wizard
+        wizard_name = get_title(wizard)
         return {'text': f'_*{wizard_name}*_ has *{points}* points contributing to _{house}_'}
     else:
         return wizard_info
 
 
+def get_title(wizard):
+    return wizard['title'] if 'title' in wizard else wizard['username']
+
 def allocate_points(wizard, points, assigner):
     points = clean_points(points)
+    assigner_found, assigner_info = get_item(assigner)
     wizard_found, wizard_info = get_item(wizard)
-    points_action = f'awarded *{points}* points to *{wizard}*' if points > 0 else f'removed *{points}* points from {wizard}'
 
-    if wizard_found:
+    if wizard_found and assigner_found:
         update_points = update_item(
             wizard,
-            expression_attributes={':p': points},
+            attributes={':p': points},
+            condition='attribute_exists(username)',
             update_expression='set points = points +:p',
             return_values="ALL_NEW"
          )
+        print("update points", update_points)
 
-        update_to_zero = update_item(
+        set_to_zero = update_item(
             wizard,
-            expression_attributes={':min': 0},
-            condition_expression='points < :min',
+            attributes={':min': 0},
+            condition='points < :min',
             update_expression='set points = :min',
             return_values="UPDATED_NEW"
         )
+        print("set_to_zero", set_to_zero)
 
-        message = update_to_zero if update_to_zero else update_points
+        message = set_to_zero if set_to_zero else update_points
         total_points = message['Attributes']['points']
+        assignee = get_title(wizard_info)
+        assigner = get_title(assigner_info)
+        points_action = f'awarded *{points}* points to *{assignee}*' if points > 0 else f'removed *{points}* points from {wizard}'
         message = {'text': f'_*{assigner}* has {points_action}, new total is *{total_points}* points_'}
         return message
     else:
@@ -248,16 +255,20 @@ def send_random_quote(assigner):
 
 def lambda_handler(event, context):
     message = {}
-   # if not verify_request(event):
-   #     return respond({"text":"Message verification failed"})
+    '''
+    if not verify_request(event):
+        return respond({"text":"Message verification failed"})
+    '''
 
     params = parse_qs(event['body'])
-    channel_id = params['channel_id']
 
+    '''
+    channel_id = params['channel_id']
     if channel_id[0] != CHANNEL_ID:  # This is only for locking the slash command to a single channel
         message = respond({'text': '_The *Marauder\'s Map* shows everyone, use it to find the slack channel where '
                                    'this feature is located_'})
         return message
+    '''
 
     if 'text' in params:
         text = params['text'][0].replace('\xa0', ' ').split(" ")

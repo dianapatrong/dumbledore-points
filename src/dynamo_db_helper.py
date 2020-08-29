@@ -4,36 +4,21 @@ dynamo = boto3.resource('dynamodb')
 HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
 
 
-def update_item(wizard, update_expression=None, condition_expression='', expression_attributes=None, return_values=None):
-    if not condition_expression:
-        try:
-            db_response = HOGWARTS_ALUMNI_TABLE.update_item(
-                Key={
-                    'username': wizard
-                },
-                UpdateExpression=update_expression,
-                ExpressionAttributeValues=expression_attributes,
-                ReturnValues=return_values
-            )
-            return db_response
-        except Exception as e:
-            print("Allocate points Exception", e)
-            return False
-    else:
-        try:
-            db_response = HOGWARTS_ALUMNI_TABLE.update_item(
-                Key={
-                    'username': wizard
-                },
-                UpdateExpression=update_expression,
-                ConditionExpression=condition_expression,
-                ExpressionAttributeValues=expression_attributes,
-                ReturnValues=return_values
-            )
-            return db_response
-        except Exception as e:
-            print("Allocate points Exception", e)
-            return False
+def update_item(wizard, update_expression=None, condition='', attributes=None, return_values=None):
+    try:
+        db_response = HOGWARTS_ALUMNI_TABLE.update_item(
+            Key={
+                'username': wizard
+            },
+            UpdateExpression=update_expression,
+            ConditionExpression=condition,
+            ExpressionAttributeValues=attributes,
+            ReturnValues=return_values
+        )
+        return db_response
+    except Exception as e:
+        print("Allocate points Exception", e)
+        return False
 
 
 def get_item(wizard):
@@ -45,8 +30,9 @@ def get_item(wizard):
         )
         item = db_response['Item']
         return True, item
-    except Exception:
-        message = {'text': f'Witch/wizard _*{wizard}*_ is not listed as a *Hogwarts Alumni*, most likely to be enrolled in _Beauxbatons_ or _Durmstrang_ '}
+    except Exception as e:
+        print("GET ITEM EXCEPTION ", e)
+        message = {'text': f'Witch/wizard _*{wizard}*_ is not listed as a *Hogwarts Alumni*, most likely to be enrolled in _Beauxbatons_ or _Durmstrang_'}
         return False, message
 
 
