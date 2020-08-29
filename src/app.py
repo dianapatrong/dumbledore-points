@@ -4,13 +4,23 @@ import hmac
 import hashlib
 from urllib.parse import parse_qs
 import random
-from dynamo_db_helper import *
+#from dynamo_db_helper import *
 
 
 HEADMASTER = ['dianapatrong']
 HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
 PREFIXES = ["In the lead is ", "Second place is ", "Third place is ", "Fourth place is "]
 # CHANNEL_ID = os.environ['CHANNEL_ID']
+INSTRUCTIONS = {
+    '- set house': '/dumbledore set house house_name _*or*_ /dumbledore set house :sorting-hat:\n',
+    '- set title': '/dumbledore set title your name and whatever you wanna be called like Hogwarts Caretaker, be creative\n',
+    '- leaderboard': '/dumbledore leaderboard\n',
+    '- house leaderboard': '/dumbledore house_name\n',
+    '- give points': '/dumbledore give 10 points to @wizard _*or*_ /dumbledore +10 @wizard\n',
+    '- remove points': '/dumbledore remove 10 points from @wizard _*or*_ /dumbledore -10 @wizard\n\n',
+    'HINT': f' House names are  _*{", ".join(HOGWARTS_HOUSES)}*_,  but if you are not sure which house do you'
+            f' belong to, you can set it to :sorting-hat: and that will do the job'
+}
 
 def verify_request(event):
     body = event['body']
@@ -117,19 +127,8 @@ def create_wizard(wizard, house):
 
 
 def display_instructions():
-    instructions = {
-        '- set house': '/dumbledore set house house_name _*or*_ /dumbledore set house :sorting-hat:\n',
-        '- set title': '/dumbledore set title your name and whatever you wanna be called like Hogwarts Caretaker, be creative\n',
-        '- leaderboard': '/dumbledore leaderboard\n',
-        '- house leaderboard': '/dumbledore house_name\n',
-        '- give points': '/dumbledore give 10 points to @wizard _*or*_ /dumbledore +10 @wizard\n',
-        '- remove points': '/dumbledore remove 10 points from @wizard _*or*_ /dumbledore -10 @wizard\n\n',
-        'HINT': f' House names are  _*{", ".join(HOGWARTS_HOUSES)}*_,  but if you are not sure which house do you'
-                f' belong to, you can set it to :sorting-hat: and that will do the job'
-    }
-
     dumbledore_orders = ""
-    for order, command in instructions.items():
+    for order, command in INSTRUCTIONS.items():
         dumbledore_orders += f'*{order}*: {command}'
     return dumbledore_orders
 
