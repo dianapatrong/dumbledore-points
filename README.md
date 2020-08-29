@@ -2,15 +2,21 @@
 
 ![Dumbledore](images/dumbledore.png)
 House points are awarded to students at Hogwarts that do good deeds, correctly answer a question in class, 
-or win a Quidditch Match. They can also be taken away for rule-breaking.
-
-I created an Slack app where you can give points to your mates for taking time to help you out but also you can 
-take them away. 
+or win a Quidditch Match. They can also be taken away for misbehaving or rule-breaking.
 
     "While you are at Hogwarts, your triumphs will earn your House points, while any rule-breaking will lose House points. 
     At the end of the year, the House with the most points is awarded the House Cup, a great honor. I hope each of you will be a credit to whichever 
     House becomes yours."
     -- Minerva McGonagall 
+
+The **House Cup** was a yearly award given at _**Hogwarts School of Witchcraft and Wizardry**_; it was given at the end of the
+school year to the house with the most **House Points**. This Slack application was developed to simulate the **House Cup** within your workspace,
+you can points to your teammates or colleagues  for taking time to help you out but also you can take them away if they did something not cool, like 
+enter a meeting 10 minutes late. 
+
+**Let the games begin!**
+![House Cup](images/housecup.jpg)
+
 
 ## Step-by-step
 Originally I started to develop this app following the steps below, but since it was too tedious to copy the lambda function
@@ -25,6 +31,9 @@ and then deploys the application using CloudFormation, so the only thing you nee
 * **Primary Key**: username
 * Click **Create**
 
+> **NOTE**: DynamoDB was chosen because it is a NoSQL database and therefore it provides a flexible schema. We 
+> can have varied data within our table, this means for this example that for each wizard we can have 
+> as many attributes as we want, and not all of the wizards are forced to have them (as long as they have Primary Keys of course).
 
 ### Step-2: Create a Lambda function
 **AWS Console** -> **Services** -> **Lambda** -> **Create function**
@@ -34,7 +43,7 @@ and then deploys the application using CloudFormation, so the only thing you nee
 * **Runtime**: Python 3.6
 * **Create function**
 
-> NOTE: Since I used AWS SAM, I did not have to copy my code directly into the AWS Lambda designer
+> **NOTE**: Since I used AWS SAM, I did not have to copy my code directly into the AWS Lambda designer
 > but if you don't want to do it with SAM you will need to create a zip package to upload it directly 
 > or re-arrange the functions into a single file, for more inforrmation you can go to 
 > [AWS Lambda deployment package in Python](https://docs.aws.amazon.com/lambda/latest/dg/python-package.html).
@@ -46,7 +55,7 @@ Within the function go to **Permissions** and click on the **Role name**, this w
     - [x] AmazonDynamoDBFullAccess
     - [x] CloudWatchFullAccess
 
-### Step-3: Create an API Gateway 
+### Step-3: Create an API Gateway (trigger from Lambda) 
 On the lambda function, click on **Add trigger**
 * Select **API Gateway**
 * Select **Create an API**
@@ -67,9 +76,10 @@ After creating the app select **Slash commands** -> **Create New Command**
 * Click **Save**
 
 Under **Basic Information**, look for **Signing Secret**, go to the Lambda Function in the AWS Management Console
-and add that as an environment variable
-** **Name**: SLACK_KEY
-** **Value**: < your secret > 
+and add that as an environment variable:
+
+* **Name**: SLACK_KEY
+* **Value**: < your secret > 
 
 
 FOR MORE INFORMATION: 
@@ -81,21 +91,37 @@ FOR MORE INFORMATION:
 There are different order that you can give with the same slash command `/dumbledore`, the first thing you need 
 to do is to enroll to Hogwarts and to do so you can use the following commands: 
 
+**Enroll to Hogwarts**: 
+If you know which house you belong to just add yourself to it, optionally you can set the option **`:sorting-hat:`** which ..well
+you should know this unless you are a muggle.
 * `/dumbledore set house gryffindor` if you know which house you belong to
 * `/dumbledore set house :sorting-hat:` if you want the sorting hat to take care of your house allocation
 
-After you are enrolled you can either start giving or taking points away from your mates or you can optionally set a
-title for yourself:
+**Set your title (optonal)**:
+You can set a cool title next to your name
+* `/dumbledore set title Diana Patron, Advisor to the Minister for Magic ` 
 
-* `/dumbledore set title Diana Patron, Advisor to the Minister for Magic ` to set a cool title next to your name
-* `/dumbledore give 10 points to @wizard1 @wizard2` or  `/dumbledore +10 @wizard1 @wizard2` to give points to 1 or more wizards
-* `/dumbledore remove 10 points from @wizard1 @wizard2` or  `/dumbledore -10 @wizard1 @wizard2` to remove points from 1 or more wizards
+> **NOTE**: If you can't find a cool title that goes with your moto go take a look at this site
+> [Wizard Ranks and Titles](https://harrypotter.fandom.com/wiki/Category:Ranks_and_titles)
 
-To display the leaderboards:
+**Give Points**:
+You can give points to 1 or more wizards at a time: 
+* `/dumbledore give 10 points from @wizard1 @wizard2` 
+* `/dumbledore +10 @wizard1 @wizard2`
 
-* `/dumbledore leaderboard` will display the leaderboard for the four Hogwarts houses
-* `/dumbledore gryffindor` will display the total of points of the house and the members leaderboard  
+**Remove Points**: 
+You can also remove points from 1 or more wizards a time
+* `/dumbledore remove 10 points from @wizard1 @wizard2` 
+* `/dumbledore -10 @wizard1 @wizard2`
+
+**Display the leaderboards**:
+You can display the leaderboard for all off the houses, or optionally you can display your house's leaderboard with 
+the total of points of the house and the members leaderboard  
+* `/dumbledore leaderboard` 
+* `/dumbledore gryffindor` 
 
 If you mess something up you will most likely end with a random message from dumbledore.
 
-> **NOTE**: I used ![emojis](images/emojis) for the sorting hat feature and some of the responses
+> **NOTE**: I used [emojis](images/emojis) for the sorting hat feature and some of the bot responses
+
+![Dumbledore Points Bot](images/bot.png)
