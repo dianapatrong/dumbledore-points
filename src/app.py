@@ -205,42 +205,14 @@ def process_point_allocation(table, assigner, text):
     return message
 
 
-def set_hogwarts_house2(table, text, assigner):
-    hogwarts_house = None
-    if len(text) == 3:
-        if text[2] == ':sorting-hat:':
-            hogwarts_house = random.choice(HOGWARTS_HOUSES)
-        else:
-            hogwarts_house = parse_potential_house(text[2])
-
-    if hogwarts_house is not None:
-        message = create_wizard(table, assigner, hogwarts_house)
-    elif len(text) == 2:
-        message = {'text': f'_What do you think this is? Magic? I do not know which house do you want to be in_'}
-    else:
-        message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
-                           f' *{", ".join(HOGWARTS_HOUSES)}* or :sorting-hat:'}
-    # ToDo: Add validation for when user type "set house" but it already belongs to a house, message displays that doesn't know which house to put him in
-    return message
-
-
-def set_hogwarts_house(table, text, assigner):
+def parse_house_text(text):
     hogwarts_house = None
     if len(text) == 1:
         if text[0] == ':sorting-hat:':
             hogwarts_house = random.choice(HOGWARTS_HOUSES)
         else:
-            hogwarts_house = parse_potential_house(text[2])
-
-    if hogwarts_house is not None:
-        message = create_wizard(table, assigner, hogwarts_house)
-    elif not text:
-        message = {'text': f'_What do you think this is? Magic? I do not know which house do you want to be in_'}
-    else:
-        message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
-                           f' *{", ".join(HOGWARTS_HOUSES)}* or :sorting-hat:'}
-    # ToDo: Add validation for when user type "set house" but it already belongs to a house, message displays that doesn't know which house to put him in
-    return message
+            hogwarts_house = parse_potential_house(text[0])
+    return hogwarts_house
 
 
 def set_wizards_title(table, text, wizard):
@@ -310,8 +282,12 @@ def lambda_handler(event, context):
 
         # Set wizard to requested house
         elif ['set', 'house'] == text[0:2]:
-            #message = set_hogwarts_house2(table, text, assigner)
-            message = set_hogwarts_house(table, text[2:], assigner)
+            house = parse_house_text(text[2:])
+            if house is not None:
+                message = create_wizard(table, assigner, house)
+            else:
+                message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
+                                   f' *{", ".join(HOGWARTS_HOUSES)}* or :sorting-hat:'}
 
         elif ['set', 'title'] == text[0:2] and len(text) > 2:
             message = set_wizards_title(table, text, assigner)
