@@ -2,6 +2,7 @@ import boto3
 
 from boto3.dynamodb.conditions import Key, Attr
 
+
 def update_item(table, wizard, update_expression=None, condition='', attributes=None, return_values=None):
     try:
         db_response = table.update_item(
@@ -13,13 +14,14 @@ def update_item(table, wizard, update_expression=None, condition='', attributes=
             ExpressionAttributeValues=attributes,
             ReturnValues=return_values
         )
+        print("db_response", db_response)
         return db_response
     except Exception as e:
         print("Allocate points Exception", e)
         return False
 
 
-def get_item(table, wizard):
+def get_item_info(table, wizard):
     try:
         db_response = table.get_item(
             Key={
@@ -27,11 +29,28 @@ def get_item(table, wizard):
             }
         )
         item = db_response['Item']
-        return True, item
+        print("IITEEM", item)
+        return item
     except Exception as e:
         print("GET ITEM EXCEPTION ", e)
         message = {'text': f'Witch/wizard _*{wizard}*_ is not listed as a *Hogwarts Alumni*, most likely to be enrolled in _Beauxbatons_ or _Durmstrang_'}
-        return False, message
+        return message
+
+
+def get_item_exists(table, wizard):
+    try:
+        db_response = table.get_item(
+            Key={
+                'username': wizard
+            }
+        )
+        item = db_response['Item']
+        print("IITEEM", item)
+        return True
+    except Exception as e:
+        print("GET ITEM EXCEPTION ", e)
+        message = {'text': f'Witch/wizard _*{wizard}*_ is not listed as a *Hogwarts Alumni*, most likely to be enrolled in _Beauxbatons_ or _Durmstrang_'}
+        return False
 
 
 def scan_info(table, house):
@@ -40,10 +59,10 @@ def scan_info(table, house):
             FilterExpression=Attr('house').eq(house.lower())
         )
         items = db_response['Items']
-        return True, items
+        return items
     except Exception as e:
         print("ECEPTION", e)
-        return False, False
+        return False
 
 
 def put_item(table, wizard, house):
