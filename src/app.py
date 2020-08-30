@@ -73,23 +73,19 @@ def parse_slack_message(text):
 
 def get_house_points(table, house):
     scan_success, scanned_wizards = scan_info(table, house)
-
     if scan_success:
         total_points = int(sum([wizard['points'] for wizard in scanned_wizards]))
         house_members = {}
         for wizard in scanned_wizards:
-            house_members[get_title(wizard)] = wizard['points']
+            house_members[get_title_if_exists(wizard)] = wizard['points']
 
-        print("HOUSE MEMBERS", house_members)
         members_by_points = {member: house_members[member] for member in sorted(house_members, key=house_members.get, reverse=True)}
 
         house_members_leaderboard = ""
         for member, points in members_by_points.items():
             house_members_leaderboard += f'_{member}_: {points}\n'
-        message = {'text': f'_*{house.capitalize()}*_ has *{total_points}* points', 'attachments': [{"text": house_members_leaderboard}]}
-    else:
-        message = {'text': f'Something went wrong when getting the house points'}
-    return message
+
+        return total_points, house_members_leaderboard
 
 
 def format_points(house_points):
@@ -143,14 +139,15 @@ def get_wizard_points(table, wizard):
     if wizard_found:
         points = wizard_info['points']
         house = wizard_info['house'].capitalize()
-        wizard_name = get_title(wizard)
+        wizard_name = get_title_if_exists(wizard)
         return {'text': f'_*{wizard_name}*_ has *{points}* points contributing to _{house}_'}
     else:
         return wizard_info
 
 
-def get_title(wizard):
+def get_title_if_exists(wizard):
     return wizard['title'] if 'title' in wizard else wizard['username']
+
 
 def allocate_points(table, wizard, points, assigner):
     points = clean_points(points)
@@ -178,8 +175,8 @@ def allocate_points(table, wizard, points, assigner):
 
         message = set_to_zero if set_to_zero else update_points
         total_points = message['Attributes']['points']
-        assignee = get_title(wizard_info)
-        assigner = get_title(assigner_info)
+        assignee = get_title_if_exists(wizard_info)
+        assigner = get_title_if_exists(assigner_info)
         points_action = f'awarded *{points}* points to *{assignee}*' if points > 0 else f'removed *{points}* points from {wizard}'
         message = {'text': f'_*{assigner}* has {points_action}, new total is *{total_points}* points_'}
         return message
@@ -208,7 +205,7 @@ def process_point_allocation(table, assigner, text):
     return message
 
 
-def set_hogwarts_house(table, text, assigner):
+def set_hogwarts_house2(table, text, assigner):
     hogwarts_house = None
     if len(text) == 3:
         if text[2] == ':sorting-hat:':
@@ -219,6 +216,25 @@ def set_hogwarts_house(table, text, assigner):
     if hogwarts_house is not None:
         message = create_wizard(table, assigner, hogwarts_house)
     elif len(text) == 2:
+        message = {'text': f'_What do you think this is? Magic? I do not know which house do you want to be in_'}
+    else:
+        message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
+                           f' *{", ".join(HOGWARTS_HOUSES)}* or :sorting-hat:'}
+    # ToDo: Add validation for when user type "set house" but it already belongs to a house, message displays that doesn't know which house to put him in
+    return message
+
+
+def set_hogwarts_house(table, text, assigner):
+    hogwarts_house = None
+    if len(text) == 1:
+        if text[0] == ':sorting-hat:':
+            hogwarts_house = random.choice(HOGWARTS_HOUSES)
+        else:
+            hogwarts_house = parse_potential_house(text[2])
+
+    if hogwarts_house is not None:
+        message = create_wizard(table, assigner, hogwarts_house)
+    elif not text:
         message = {'text': f'_What do you think this is? Magic? I do not know which house do you want to be in_'}
     else:
         message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
@@ -287,11 +303,15 @@ def lambda_handler(event, context):
 
         # Display leaderboard for the house requested
         elif len(text) == 1 and text[0].lower() in HOGWARTS_HOUSES:
-            message = get_house_points(table, text[0].lower())
+            house = text[0].lower()
+            total_points, members_leaderboard = get_house_points(table, house)
+            message = {'text': f'_*{house}*_ has *{total_points}* points',
+                       'attachments': [{"text": members_leaderboard}]}
 
         # Set wizard to requested house
         elif ['set', 'house'] == text[0:2]:
-            message = set_hogwarts_house(table, text, assigner)
+            #message = set_hogwarts_house2(table, text, assigner)
+            message = set_hogwarts_house(table, text[2:], assigner)
 
         elif ['set', 'title'] == text[0:2] and len(text) > 2:
             message = set_wizards_title(table, text, assigner)

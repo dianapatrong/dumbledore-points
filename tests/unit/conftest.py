@@ -13,13 +13,13 @@ def use_moto():
             TableName='alumni',
             KeySchema=[
                 {
-                    'AttributeName': 'user',
+                    'AttributeName': 'username',
                     'KeyType': 'HASH'
                 }
             ],
             AttributeDefinitions=[
                 {
-                    'AttributeName': 'user',
+                    'AttributeName': 'username',
                     'AttributeType': 'S'
                 }
             ],
