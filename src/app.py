@@ -216,15 +216,22 @@ def parse_house_text(text):
 
 
 def set_wizards_title(table, text, wizard):
-    title = ' '.join(text[2:])
-    update_item(
-        table,
-        wizard,
-        attributes={':t': title},
-        update_expression='set title = :t',
-        return_values="UPDATED_NEW"
-    )
-    return {'text': f'_Your title has been updated to *{title}*_'}
+    wizard_found, wizard_info = get_item(table, wizard)
+    wizard = remove_at(wizard)
+    title = None
+    if wizard_found:
+        update_item(
+            table,
+            wizard,
+            attributes={':t': text},
+            update_expression='set title = :t',
+            return_values="UPDATED_NEW"
+        )
+    if title:
+        message = {'text': f'_Your title has been updated to *{title}*_'}
+    else:
+        message = {'text': f'_Give the instructions another read, maybe it takes twice to understand_'}
+    return message
 
 
 def send_random_quote(assigner):
@@ -266,7 +273,7 @@ def lambda_handler(event, context):
         text = params['text'][0].replace('\xa0', ' ').split(" ")
         assigner = params['user_name'][0]
         point_allocators = ['give', 'remove', '+', '-']
-        matching = [word for word in text if any(s in word for s in point_allocators)]
+        matching_words = [word for word in text if any(s in word for s in point_allocators)]
 
         # Display leaderboard for all houses
         if 'leaderboard' in text:
@@ -290,10 +297,11 @@ def lambda_handler(event, context):
                                    f' *{", ".join(HOGWARTS_HOUSES)}* or :sorting-hat:'}
 
         elif ['set', 'title'] == text[0:2] and len(text) > 2:
-            message = set_wizards_title(table, text, assigner)
+            title = ' '.join(text[2:])
+            message = set_wizards_title(table, title, assigner)
 
         # Allocate points
-        elif matching:
+        elif matching_words:
             message = process_point_allocation(table, assigner, text)
 
         else:
