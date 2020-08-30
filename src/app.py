@@ -4,8 +4,8 @@ import hmac
 import hashlib
 from urllib.parse import parse_qs
 import random
-#from dynamo_db_helper import *
-
+from src.dynamo_db_helper import *
+import boto3
 
 HEADMASTER = ['dianapatrong']
 HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
@@ -21,6 +21,7 @@ INSTRUCTIONS = {
     'HINT': f' House names are  _*{", ".join(HOGWARTS_HOUSES)}*_,  but if you are not sure which house do you'
             f' belong to, you can set it to :sorting-hat: and that will do the job'
 }
+
 
 def verify_request(event):
     body = event['body']
@@ -70,8 +71,8 @@ def parse_slack_message(text):
         return wizards, points
 
 
-def get_house_points(house):
-    scan_success, scanned_wizards = scan_info(house)
+def get_house_points(table, house):
+    scan_success, scanned_wizards = scan_info(table, house)
 
     if scan_success:
         total_points = int(sum([wizard['points'] for wizard in scanned_wizards]))
@@ -99,12 +100,12 @@ def format_points(house_points):
     return houses_leaderboard
 
 
-def get_house_leaderboard():
+def get_house_leaderboard(table):
     house_points = {}
     for house in HOGWARTS_HOUSES:
-        scan_success, scanned_wizards = scan_info(house)
+        scan_success, scanned_wizards = scan_info(table, house)
         house_points[house] = int(sum([wizard['points'] for wizard in scanned_wizards]))
-    return format_points(house_points)
+    return house_points
 
 
 def parse_potential_house(house):
@@ -115,11 +116,11 @@ def parse_potential_house(house):
         return None
 
 
-def create_wizard(wizard, house):
-    wizard_found, wizard_info = get_item(wizard)
+def create_wizard(table, wizard, house):
+    wizard_found, wizard_info = get_item(table, wizard)
     wizard = remove_at(wizard)
     if not wizard_found:
-        put_item(wizard, house)
+        put_item(table, wizard, house)
         message = {'text': f'Welcome _*{wizard}*_ to _*{house}*_'}  # change username to full name eventually
     else:
         message = {'text': f'Wizard _*{wizard}*_ already exists'}
@@ -137,8 +138,8 @@ def clean_points(points):
     return max(-2000, points) if points < 0 else min(2000, points)
 
 
-def get_wizard_points(wizard):
-    wizard_found, wizard_info = get_item(wizard)
+def get_wizard_points(table, wizard):
+    wizard_found, wizard_info = get_item(table, wizard)
     if wizard_found:
         points = wizard_info['points']
         house = wizard_info['house'].capitalize()
@@ -151,10 +152,10 @@ def get_wizard_points(wizard):
 def get_title(wizard):
     return wizard['title'] if 'title' in wizard else wizard['username']
 
-def allocate_points(wizard, points, assigner):
+def allocate_points(table, wizard, points, assigner):
     points = clean_points(points)
-    assigner_found, assigner_info = get_item(assigner)
-    wizard_found, wizard_info = get_item(wizard)
+    assigner_found, assigner_info = get_item(table, assigner)
+    wizard_found, wizard_info = get_item(table, wizard)
 
     if wizard_found and assigner_found:
         update_points = update_item(
@@ -186,18 +187,18 @@ def allocate_points(wizard, points, assigner):
         return wizard_info
 
 
-def process_point_allocation(assigner, text):
+def process_point_allocation(table, assigner, text):
     wizards, points = parse_slack_message(text)
     agg_messages = []
     if wizards:
         for wizard in wizards:
             # Avoid wizards from granting points to themselves
             if wizard == assigner and assigner not in HEADMASTER:
-                message = get_wizard_points(wizard)
+                message = get_wizard_points(table, wizard)
                 message['attachments'] = [{'text': '_Are you awarding points to yourself? '
                                                    'That is like the *Forbidden Forest*: off limits_ :shame:'}]
             else:
-                agg_messages.append(allocate_points(wizard, points, assigner))
+                agg_messages.append(allocate_points(table, wizard, points, assigner))
 
         if agg_messages:
             message = {'text': '\n'.join(m_points['text'] for m_points in agg_messages)}
@@ -207,7 +208,7 @@ def process_point_allocation(assigner, text):
     return message
 
 
-def set_hogwarts_house(text, assigner):
+def set_hogwarts_house(table, text, assigner):
     hogwarts_house = None
     if len(text) == 3:
         if text[2] == ':sorting-hat:':
@@ -216,7 +217,7 @@ def set_hogwarts_house(text, assigner):
             hogwarts_house = parse_potential_house(text[2])
 
     if hogwarts_house is not None:
-        message = create_wizard(assigner, hogwarts_house)
+        message = create_wizard(table, assigner, hogwarts_house)
     elif len(text) == 2:
         message = {'text': f'_What do you think this is? Magic? I do not know which house do you want to be in_'}
     else:
@@ -226,11 +227,12 @@ def set_hogwarts_house(text, assigner):
     return message
 
 
-def set_wizards_title(text, wizard):
+def set_wizards_title(table, text, wizard):
     title = ' '.join(text[2:])
     update_item(
+        table,
         wizard,
-        expression_attributes={':t': title},
+        attributes={':t': title},
         update_expression='set title = :t',
         return_values="UPDATED_NEW"
     )
@@ -253,6 +255,9 @@ def send_random_quote(assigner):
     return {'text': f'_{random.choice(random_quotes)}_'}
 
 def lambda_handler(event, context):
+    dynamo = boto3.resource('dynamodb')
+    table = dynamo.Table('Hogwarts_Alumni')
+
     message = {}
     '''
     if not verify_request(event):
@@ -277,23 +282,23 @@ def lambda_handler(event, context):
 
         # Display leaderboard for all houses
         if 'leaderboard' in text:
-            house_points = get_house_leaderboard()
-            message = {'text': f'{house_points}'}
+            house_points = get_house_leaderboard(table)
+            message = {'text': f'{format_points(house_points)}'}
 
         # Display leaderboard for the house requested
         elif len(text) == 1 and text[0].lower() in HOGWARTS_HOUSES:
-            message = get_house_points(text[0].lower())
+            message = get_house_points(table, text[0].lower())
 
         # Set wizard to requested house
         elif ['set', 'house'] == text[0:2]:
-            message = set_hogwarts_house(text, assigner)
+            message = set_hogwarts_house(table, text, assigner)
 
         elif ['set', 'title'] == text[0:2] and len(text) > 2:
-            message = set_wizards_title(text, assigner)
+            message = set_wizards_title(table, text, assigner)
 
         # Allocate points
         elif matching:
-            message = process_point_allocation(assigner, text)
+            message = process_point_allocation(table, assigner, text)
 
         else:
             message = send_random_quote(assigner)

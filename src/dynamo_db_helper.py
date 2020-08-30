@@ -1,12 +1,10 @@
 import boto3
 
-dynamo = boto3.resource('dynamodb')
-HOGWARTS_ALUMNI_TABLE = dynamo.Table('Hogwarts_Alumni')
+from boto3.dynamodb.conditions import Key, Attr
 
-
-def update_item(wizard, update_expression=None, condition='', attributes=None, return_values=None):
+def update_item(table, wizard, update_expression=None, condition='', attributes=None, return_values=None):
     try:
-        db_response = HOGWARTS_ALUMNI_TABLE.update_item(
+        db_response = table.update_item(
             Key={
                 'username': wizard
             },
@@ -21,9 +19,9 @@ def update_item(wizard, update_expression=None, condition='', attributes=None, r
         return False
 
 
-def get_item(wizard):
+def get_item(table, wizard):
     try:
-        db_response = HOGWARTS_ALUMNI_TABLE.get_item(
+        db_response = table.get_item(
             Key={
                 'username': wizard
             }
@@ -36,22 +34,26 @@ def get_item(wizard):
         return False, message
 
 
-def scan_info(house):
+def scan_info(table, house):
     try:
-        db_response = HOGWARTS_ALUMNI_TABLE.scan(
-            FilterExpression=boto3.dynamodb.conditions.Attr('house').eq(house.lower())
+        db_response = table.scan(
+            FilterExpression=Attr('house').eq(house.lower())
         )
         items = db_response['Items']
         return True, items
     except Exception as e:
+        print("ECEPTION", e)
         return False, False
 
 
-def put_item(wizard, house):
-    HOGWARTS_ALUMNI_TABLE.put_item(
-        Item={
-            'username': wizard,
-            'house': house,
-            'points': 0
-        }
-    )
+def put_item(table, wizard, house):
+    try:
+        table.put_item(
+            Item={
+                'username': wizard,
+                'house': house,
+                'points': 0
+            }
+        )
+    except Exception as e:
+        print("EXCEPTION,", e)
