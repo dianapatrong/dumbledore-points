@@ -25,7 +25,7 @@ def test_create_wizard(use_moto):
 
 def test_remove_at():
     from src.app import remove_at
-    assert remove_at('@hermionegranger') == 'hermionegranger'
+    assert remove_at('@HermioneGranger') == 'hermionegranger'
 
 
 @mock_dynamodb2
@@ -52,6 +52,28 @@ def test_set_wizard_title_null(use_moto):
     table.put_item(Item=item)
     title_message = set_wizards_title(table, '', 'ronweasley')
     assert title_message == {'text': '_Give the instructions another read, maybe it takes twice to understand_'}
+
+
+@mock_dynamodb2
+def test_get_wizard_existing_title(use_moto):
+    from src.app import get_title_if_exists
+    use_moto()
+    table = boto3.resource('dynamodb', region_name='us-east-1').Table('alumni')
+    item = {'username': 'ronweasley', 'house': 'gryffindor', 'points': 88, 'title': 'Ron Weasley, Quidditch Captain'}
+    table.put_item(Item=item)
+    title = get_title_if_exists(table, 'ronweasley')
+    assert title == 'Ron Weasley, Quidditch Captain'
+
+
+@mock_dynamodb2
+def test_get_wizard_non_existing_title(use_moto):
+    from src.app import get_title_if_exists
+    use_moto()
+    table = boto3.resource('dynamodb', region_name='us-east-1').Table('alumni')
+    item = {'username': 'ronweasley', 'house': 'gryffindor', 'points': 88}
+    table.put_item(Item=item)
+    title = get_title_if_exists(table, 'ronweasley')
+    assert title == 'ronweasley'
 
 
 @mock_dynamodb2
