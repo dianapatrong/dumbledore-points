@@ -5,6 +5,7 @@ import pytest
 from moto import mock_dynamodb2
 
 
+@mock_dynamodb2
 class TestDumbledorePoints():
     @staticmethod
     def get_slack_command(username, app_name, text):
@@ -36,3 +37,20 @@ class TestDumbledorePoints():
         assert 'text' in ret['body']
         assert data['text'] == '_Wizard *dumbledore* does not have priviledges yet, please enroll_'
 
+    def test_display_house_leaderboard_handler_user_exists(self, use_moto):
+        use_moto()
+        event = TestDumbledorePoints.get_slack_command('dumbledore', 'dumbledore', 'gryffindor')
+        TestDumbledorePoints.load_items_into_mock_db()
+        ret = app.lambda_handler(event, "")
+        data = json.loads(ret['body'])
+        assert ret["statusCode"] == 200
+        assert 'text' in ret['body']
+        assert data['text'] == '_*gryffindor*_ has *20* points'
+        assert 'attachments' in ret['body']
+        assert data['attachments'] == [{'text': '_dumbledore_: 20\n'}]
+
+    @staticmethod
+    def load_items_into_mock_db():
+        table = boto3.resource('dynamodb', region_name='us-east-1').Table('alumni')
+        item = {'username': 'dumbledore', 'house': 'gryffindor', 'points': 20}
+        table.put_item(Item=item)

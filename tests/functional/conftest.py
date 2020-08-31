@@ -4,7 +4,7 @@ import pytest
 from moto import mock_dynamodb2
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def use_moto():
     @mock_dynamodb2
     def dynamodb_client():
@@ -30,3 +30,4 @@ def use_moto():
         )
         return dynamodb
     return dynamodb_client
+
