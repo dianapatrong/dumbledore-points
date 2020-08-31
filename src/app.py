@@ -4,8 +4,12 @@ import hmac
 import hashlib
 from urllib.parse import parse_qs
 import random
-from dynamo_db_helper import *
+import dynamodb
+from typing import Union, Tuple, Optional, Dict, List, Any, Iterable
+from mypy_boto3_dynamodb import DynamoDBServiceResource
+from mypy_boto3_dynamodb.service_resource import Table
 import boto3
+
 
 HEADMASTER = ['dianapatrong', 'dumbledore']
 HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
@@ -23,7 +27,7 @@ INSTRUCTIONS = {
 }
 
 
-def verify_request(event):
+def verify_request(event: dict) -> bool:
     body = event['body']
     timestamp = event['headers']['X-Slack-Request-Timestamp']
     slack_signature = event['headers']['X-Slack-Signature']
@@ -40,11 +44,11 @@ def respond(message=None):
     }
 
 
-def remove_at(name):
+def remove_at(name: str) -> str:
     return name.replace('@', '').lower()
 
 
-def parse_points(text, give_points):
+def parse_points(text: List[str], give_points: bool) -> int:
     possible_points = []
     for num in text:
         try:
@@ -60,7 +64,7 @@ def parse_points(text, give_points):
     return points
 
 
-def parse_points_message(text):
+def parse_points_message(text: List[str]) -> Union[Tuple[list, int], Tuple[bool, bool]]:
     give_points = True if [word for word in text if any(s in word for s in ['give', '+'])] else False
     wizards = [remove_at(name) for name in text if name.startswith('@')]
     if not wizards:
@@ -70,8 +74,8 @@ def parse_points_message(text):
         return wizards, points
 
 
-def get_house_points(table, house):
-    scanned_wizards = scan_info(table, house)
+def get_house_points(table: Table, house: str) -> Tuple[int, str]:
+    scanned_wizards = dynamodb.scan_info(table, house)
     total_points = int(sum([wizard['points'] for wizard in scanned_wizards]))
     house_members = {}
     for wizard in scanned_wizards:
@@ -85,7 +89,7 @@ def get_house_points(table, house):
     return total_points, house_members_leaderboard
 
 
-def format_points(house_points):
+def format_points(house_points: Dict[str, int]) -> str:
     order_by_points = {house: house_points[house] for house in sorted(house_points, key=house_points.get, reverse=True)}
     houses_leaderboard = ""
     for prefix, (house, points) in zip(PREFIXES, order_by_points.items()):
@@ -93,15 +97,15 @@ def format_points(house_points):
     return houses_leaderboard
 
 
-def get_house_leaderboard(table):
+def get_house_leaderboard(table: Table) -> Dict[str, int]:
     house_points = {}
     for house in HOGWARTS_HOUSES:
-        scanned_wizards = scan_info(table, house)
+        scanned_wizards = dynamodb.scan_info(table, house)
         house_points[house] = int(sum([wizard['points'] for wizard in scanned_wizards]))
     return house_points
 
 
-def parse_potential_house(house):
+def parse_potential_house(house: str) -> Union[str, None]:
     target_house = house.lower()
     if target_house in HOGWARTS_HOUSES:
         return target_house
@@ -109,42 +113,42 @@ def parse_potential_house(house):
         return None
 
 
-def create_wizard(table, wizard, house):
+def create_wizard(table: Table, wizard: str, house: str) -> Dict[str, str]:
     wizard = remove_at(wizard)
-    put_item(table, wizard, house)
+    dynamodb.put_item(table, wizard, house)
     message = {'text': f'Welcome _*{wizard}*_ to _*{house}*_'}  # change username to full name eventually
     return message
 
 
-def display_instructions():
+def display_instructions() -> str:
     dumbledore_orders = ""
     for order, command in INSTRUCTIONS.items():
         dumbledore_orders += f'*{order}*: {command}'
     return dumbledore_orders
 
 
-def clean_points(points):
+def clean_points(points: int) -> int:
     return max(-2000, points) if points < 0 else min(2000, points)
 
 
-def get_wizard_points(table, wizard):
-    wizard_info = get_item_info(table, wizard)
+def get_wizard_points(table: Table, wizard: str) -> int:
+    wizard_info = dynamodb.get_item_info(table, wizard)
     points = int(wizard_info['points'])
     return points
 
 
-def get_title_if_exists(table, wizard):
-    wizard_info = get_item_info(table, wizard)
+def get_title_if_exists(table: Table, wizard: str) -> str:
+    wizard_info = dynamodb.get_item_info(table, wizard)
     return wizard_info['title'] if 'title' in wizard_info else wizard_info['username']
 
 
-def allocate_points(table, wizard, points, assigner):
+def allocate_points(table: Table, wizard: str, points: int, assigner: str) -> Dict[str, str]:
     points = clean_points(points)
-    wizard_info = get_item_info(table, wizard)
+    wizard_info = dynamodb.get_item_info(table, wizard)
     points_to_give = wizard_info['points'] + points
     points_to_give = points_to_give if points_to_give > 0 else 0
 
-    update_points = update_item(
+    update_points = dynamodb.update_item(
         table,
         wizard,
         attributes={':p': points_to_give},
@@ -159,11 +163,11 @@ def allocate_points(table, wizard, points, assigner):
     return message
 
 
-def is_headmaster(wizard, assigner):
+def is_headmaster(wizard: str, assigner: str) -> bool:
     return True if wizard == assigner and assigner not in HEADMASTER else False
 
 
-def process_point_allocation(table, wizards, points, assigner):
+def process_point_allocation(table: Table, wizards: List[str], points: int, assigner: str) -> Any:
     message = {}
     agg_messages = []
     for wizard in wizards:
@@ -183,12 +187,12 @@ def process_point_allocation(table, wizards, points, assigner):
     return message
 
 
-def merge_message(verified_m, not_verified_m):
+def merge_message(verified_m: Dict[str, str], not_verified_m: Dict[str, str]) -> Dict[str, str]:
     agg_message = {'text': f'{verified_m["text"]}\n{not_verified_m["text"]}'}
     return agg_message
 
 
-def message_for_not_verified_wizards(wizards):
+def message_for_not_verified_wizards(wizards: List[str]) -> Dict[str, str]:
     agg_messages = []
     for wizard in wizards:
        agg_messages.append({'text': f'_Not a drop of magical blood in *{wizard}* veins_'})
@@ -196,7 +200,7 @@ def message_for_not_verified_wizards(wizards):
     return message
 
 
-def parse_house_text(text):
+def parse_house_text(text: List[str]) -> Optional[str]:
     hogwarts_house = None
     if len(text) == 1:
         if text[0] == ':sorting-hat:':
@@ -206,14 +210,14 @@ def parse_house_text(text):
     return hogwarts_house
 
 
-def set_wizards_title(table, title, wizard):
+def set_wizards_title(table: Table, title: str, wizard: str) -> dict:
     wizard = remove_at(wizard)
-    update_item(
+    dynamodb.update_item(
         table,
         wizard,
         attributes={':t': title},
         update_expression='set title = :t',
-        return_values="UPDATED_NEW"
+        return_values='UPDATED_NEW'
     )
     if title:
         message = {'text': f'_Your title has been updated to *{title}*_'}
@@ -222,7 +226,7 @@ def set_wizards_title(table, title, wizard):
     return message
 
 
-def send_random_quote(assigner):
+def send_random_quote(assigner: str) -> dict:
     random_quotes = [
         'What happened down in the dungeons between you and Professor Quirrell is a complete secret, so, naturally the whole school knows.',
         'One can never have enough socks',
@@ -238,18 +242,18 @@ def send_random_quote(assigner):
     return {'text': f'_{random.choice(random_quotes)}_'}
 
 
-def verify_user(table, user):
-    return get_item_exists(table, user)
+def verify_user(table: Table, user: str) -> bool:
+    return dynamodb.get_item_exists(table, user)
 
 
-def lambda_handler(event, context):
-    dynamo = boto3.resource('dynamodb')
-    table = dynamo.Table('alumni')
+def lambda_handler(event: dict, context: dict):
+    dynamo: DynamoDBServiceResource = boto3.resource('dynamodb')
+    table: Table = dynamo.Table('alumni')
     message = {}
 
     if not verify_request(event):
         return respond({'text': 'Message verification failed'})
-    params = parse_qs(event['body'])
+    params: dict = parse_qs(event['body'])
 
     channel_id = params['channel_id']
     if channel_id[0] != CHANNEL_ID:  # This is only for locking the slash command to a single channel
@@ -258,10 +262,9 @@ def lambda_handler(event, context):
         return message
 
     if 'text' in params:
-        text = params['text'][0].replace('\xa0', ' ').split(" ")
-        assigner = params['user_name'][0]
-        point_allocators = ['give', 'remove', '+', '-']
-        matching_words = [word for word in text if any(s in word for s in point_allocators)]
+        text: list = params['text'][0].replace('\xa0', ' ').split(" ")
+        assigner: str = params['user_name'][0]
+        matching_words: list = [word for word in text if any(s in word for s in ['give', 'remove', '+', '-'])]
 
         if verify_user(table, assigner):
             # Display leaderboard for all houses
@@ -287,8 +290,8 @@ def lambda_handler(event, context):
             # Allocate points
             elif matching_words:
                 wizards, points = parse_points_message(text)
-                verified_wizards = [wizard for wizard in wizards if verify_user(table, wizard)]
-                not_verified = list(set(wizards) - set(verified_wizards))
+                verified_wizards: List[str] = [wizard for wizard in wizards if verify_user(table, wizard)]
+                not_verified: List[str] = list(set(wizards) - set(verified_wizards))
                 if verified_wizards:
                     message_verified = process_point_allocation(table, verified_wizards, points, assigner)
                     message_not_verified = message_for_not_verified_wizards(not_verified)
