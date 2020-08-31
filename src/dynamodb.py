@@ -1,7 +1,9 @@
 from boto3.dynamodb.conditions import Key, Attr
+from typing import Union, Dict, Any
+from mypy_boto3_dynamodb.service_resource import Table
 
 
-def update_item(table, wizard, update_expression=None, attributes=None, return_values=None):
+def update_item(table: Table, wizard: str, update_expression: str, attributes: dict, return_values: Any) -> Union[Any, bool]:
     try:
         db_response = table.update_item(
             Key={
@@ -17,7 +19,7 @@ def update_item(table, wizard, update_expression=None, attributes=None, return_v
         return False
 
 
-def get_item_info(table, wizard):
+def get_item_info(table: Table, wizard: str) -> Dict[Any, Any]:
     try:
         db_response = table.get_item(
             Key={
@@ -32,7 +34,7 @@ def get_item_info(table, wizard):
         return message
 
 
-def get_item_exists(table, wizard):
+def get_item_exists(table: Table, wizard: str) -> bool:
     try:
         db_response = table.get_item(
             Key={
@@ -46,7 +48,7 @@ def get_item_exists(table, wizard):
         return False
 
 
-def scan_info(table, house):
+def scan_info(table: Table, house: str) -> Union[Any, bool]:
     try:
         db_response = table.scan(
             FilterExpression=Attr('house').eq(house.lower())
@@ -58,7 +60,7 @@ def scan_info(table, house):
         return False
 
 
-def put_item(table, wizard, house):
+def put_item(table: Table, wizard: str, house: str) -> None:
     try:
         table.put_item(
             Item={
