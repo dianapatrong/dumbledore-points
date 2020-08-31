@@ -195,7 +195,7 @@ def merge_message(verified_m: Dict[str, str], not_verified_m: Dict[str, str]) ->
 def message_for_not_verified_wizards(wizards: List[str]) -> Dict[str, str]:
     agg_messages = []
     for wizard in wizards:
-       agg_messages.append({'text': f'_Not a drop of magical blood in *{wizard}* veins_'})
+       agg_messages.append({'text': f'_Not a drop of magical blood in *{wizard}\'s* veins_'})
     message = {'text': '\n'.join(m['text'] for m in agg_messages)}
     return message
 

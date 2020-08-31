@@ -82,6 +82,16 @@ and add that as an environment variable:
 * **Value**: < your secret > 
 
 
+Also I used another environment variable to set the channel in which the slack app will be running, if you want it to be
+channel independent just comment the following part in [app.py](src/app.py):
+
+```python 
+channel_id = params['channel_id']
+if channel_id[0] != CHANNEL_ID:  # This is only for locking the slash command to a single channel
+    message = respond({'text': '_The *Marauder\'s Map* shows everyone, use it to find the slack channel where '
+                               'this feature is located_'})`
+```
+
 FOR MORE INFORMATION: 
 * https://api.slack.com/authentication/verifying-requests-from-slack
 * https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-hello-world.html
