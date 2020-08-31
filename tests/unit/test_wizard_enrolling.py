@@ -33,11 +33,7 @@ def test_set_wizard_title(use_moto):
     from src.app import set_wizards_title
     use_moto()
     table = boto3.resource('dynamodb', region_name='us-east-1').Table('alumni')
-    item = {
-        'username': 'ronweasley',
-        'house': 'gryffindor',
-        'points': 88
-    }
+    item = {'username': 'ronweasley', 'house': 'gryffindor', 'points': 88}
     table.put_item(Item=item)
     title_message = set_wizards_title(table, 'Ron Weasley, Quidditch Captain', 'ronweasley' )
     assert title_message == {'text': '_Your title has been updated to *Ron Weasley, Quidditch Captain*_'}
