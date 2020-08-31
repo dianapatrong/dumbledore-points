@@ -5,7 +5,7 @@ import hashlib
 from urllib.parse import parse_qs
 import random
 import dynamodb
-from typing import Union, Tuple, Optional, Dict, List, Any, Iterable
+from typing import Union, Tuple, Optional, Dict, List, Any, Iterable, cast, MutableMapping
 from mypy_boto3_dynamodb import DynamoDBServiceResource
 from mypy_boto3_dynamodb.service_resource import Table
 import boto3
@@ -64,7 +64,7 @@ def parse_points(text: List[str], give_points: bool) -> int:
     return points
 
 
-def parse_points_message(text: List[str]) -> Union[Tuple[list, int], Tuple[bool, bool]]:
+def parse_points_message(text: List[str]) -> Union[Tuple[List[str], int], Tuple[bool, bool]]:
     give_points = True if [word for word in text if any(s in word for s in ['give', '+'])] else False
     wizards = [remove_at(name) for name in text if name.startswith('@')]
     if not wizards:
@@ -167,16 +167,16 @@ def is_headmaster(wizard: str, assigner: str) -> bool:
     return True if wizard == assigner and assigner not in HEADMASTER else False
 
 
-def process_point_allocation(table: Table, wizards: List[str], points: int, assigner: str) -> Any:
-    message = {}
+def process_point_allocation(table: Table, wizards: Iterable[str], points: int, assigner: str) -> Dict[str, Any]:
+    message: Dict[str, Any] = {}
     agg_messages = []
     for wizard in wizards:
         # Avoid wizards from granting points to themselves
         if is_headmaster(wizard, assigner):
             current_points = get_wizard_points(table, wizard)
             title = get_title_if_exists(table, wizard)
-            message = {'text': f'_*{title}*_ has *{current_points}* points, you will be cursed with the *Anti-Cheating* spell_'}
-            message['attachments'] = [{'text': '_Are you awarding points to yourself? '
+            message['text'] = f'_*{title}*_ has *{current_points}* points, you will be cursed with the *Anti-Cheating* spell_'
+            message['attachments'] = [{'text': '_Are you awarding points to yourself? '  
                                                'That is like the *Forbidden Forest*: off limits_ :shame:'}]
         else:
             points_allocated = allocate_points(table, wizard, points, assigner)
@@ -201,7 +201,7 @@ def message_for_not_verified_wizards(wizards: List[str]) -> Dict[str, str]:
 
 
 def parse_house_text(text: List[str]) -> Optional[str]:
-    hogwarts_house = None
+    hogwarts_house: Optional[str] = None
     if len(text) == 1:
         if text[0] == ':sorting-hat:':
             hogwarts_house = random.choice(HOGWARTS_HOUSES)
@@ -289,9 +289,11 @@ def lambda_handler(event: dict, context: dict):
 
             # Allocate points
             elif matching_words:
+                wizards: Union[Iterable[str], bool]
+                points: Union[int, bool]
                 wizards, points = parse_points_message(text)
-                verified_wizards: List[str] = [wizard for wizard in wizards if verify_user(table, wizard)]
-                not_verified: List[str] = list(set(wizards) - set(verified_wizards))
+                verified_wizards: List[str] = [wizard for wizard in wizards if verify_user(table, wizard)]  # type: ignore
+                not_verified: List[str] = list(set(wizards) - set(verified_wizards)) # type: ignore
                 if verified_wizards:
                     message_verified = process_point_allocation(table, verified_wizards, points, assigner)
                     message_not_verified = message_for_not_verified_wizards(not_verified)
