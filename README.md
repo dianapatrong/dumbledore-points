@@ -92,11 +92,6 @@ if channel_id[0] != CHANNEL_ID:  # This is only for locking the slash command to
                                'this feature is located_'})`
 ```
 
-FOR MORE INFORMATION: 
-* https://api.slack.com/authentication/verifying-requests-from-slack
-* https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-hello-world.html
-
-
 ## How to use
 There are different order that you can give with the same slash command `/dumbledore`, the first thing you need 
 to do is to enroll to Hogwarts and to do so you can use the following commands: 
@@ -146,3 +141,12 @@ with expected responses from AWS, without actually calling any services/resource
 To run the functional and unit tests run the following command: 
 
 `python -m pytest tests/ -s -vv`
+
+# Architecture
+![Dumbledore points architecture](images/dumbledore_points_architecture.png)
+
+# More information: 
+* https://api.slack.com/authentication/verifying-requests-from-slack
+* https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-hello-world.html
+* https://github.com/spulec/moto
+
