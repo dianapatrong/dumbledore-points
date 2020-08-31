@@ -45,7 +45,7 @@ class TestDumbledorePoints():
         data = json.loads(ret['body'])
         assert ret["statusCode"] == 200
         assert 'text' in ret['body']
-        assert data['text'] == '_*gryffindor*_ has *20* points'
+        assert data['text'] == '_*gryffindor* has *20* points_'
         assert 'attachments' in ret['body']
         assert data['attachments'] == [{'text': '_dumbledore_: 20\n'}]
 

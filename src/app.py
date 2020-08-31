@@ -172,7 +172,7 @@ def process_point_allocation(table, wizards, points, assigner):
         if is_headmaster(wizard, assigner):
             current_points = get_wizard_points(table, wizard)
             title = get_title_if_exists(table, wizard)
-            message = {'text': f'_*{title}*_ has *{current_points}* points, cheater'}
+            message = {'text': f'_*{title}*_ has *{current_points}* points, you will be cursed with the *Anti-Cheating* spell_'}
             message['attachments'] = [{'text': '_Are you awarding points to yourself? '
                                                'That is like the *Forbidden Forest*: off limits_ :shame:'}]
         else:
@@ -181,6 +181,19 @@ def process_point_allocation(table, wizards, points, assigner):
 
     if agg_messages:
         message = {'text': '\n'.join(m_points['text'] for m_points in agg_messages)}
+    return message
+
+
+def merge_message(verified_m, not_verified_m):
+    agg_message = {'text': f'{verified_m["text"]}\n{not_verified_m["text"]}'}
+    return agg_message
+
+
+def message_for_not_verified_wizards(wizards):
+    agg_messages = []
+    for wizard in wizards:
+       agg_messages.append({'text': f'_Not a drop of magical blood in *{wizard}* veins_'})
+    message = {'text': '\n'.join(m['text'] for m in agg_messages)}
     return message
 
 
@@ -233,7 +246,7 @@ def verify_user(table, user):
 def lambda_handler(event, context):
     print("EVENT", event)
     dynamo = boto3.resource('dynamodb')
-    table = dynamo.Table('Hogwarts_Alumni')
+    table = dynamo.Table('alumni')
 
     message = {}
     '''
@@ -267,11 +280,12 @@ def lambda_handler(event, context):
             elif len(text) == 1 and text[0].lower() in HOGWARTS_HOUSES:
                 house = text[0].lower()
                 total_points, members_leaderboard = get_house_points(table, house)
-                message = {'text': f'_*{house}*_ has *{total_points}* points',
+                message = {'text': f'_*{house}* has *{total_points}* points_',
                            'attachments': [{"text": members_leaderboard}]}
 
             elif ['set', 'house'] == text[0:2]:
-                message = {'text': f'Wizard _*{get_title_if_exists(table, assigner)}*_ already exists'}
+                message = {'text': f'_Wizard *{get_title_if_exists(table, assigner)}* already exists; '
+                                   f'sometimes we sort too soon_'}
 
             elif ['set', 'title'] == text[0:2] and len(text) > 2:
                 title = ' '.join(text[2:])
@@ -281,12 +295,14 @@ def lambda_handler(event, context):
             elif matching_words:
                 wizards, points = parse_points_message(text)
                 verified_wizards = [wizard for wizard in wizards if verify_user(table, wizard)]
+                not_verified = list(set(wizards) - set(verified_wizards))
                 if verified_wizards:
-                    message = process_point_allocation(table, verified_wizards, points, assigner)
+                    message_verified = process_point_allocation(table, verified_wizards, points, assigner)
+                    message_not_verified = message_for_not_verified_wizards(not_verified)
+                    message = merge_message(message_verified, message_not_verified)
                 else:
-                    message = {'text': f'_What do you think this is? Magic? '
-                                       f'I do not know which wizard do you want to give points to_'}
-
+                    message = {'text': f'_Witch(es)/wizard(s) *{", ".join(not_verified)}* not listed as a *Hogwarts Alumni*, '
+                                       f'most likely to be enrolled in *Beauxbatons* or *Durmstrang*_'}
             else:
                 message = send_random_quote(assigner)
         else:
@@ -299,7 +315,7 @@ def lambda_handler(event, context):
                     message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
                                        f' *{", ".join(HOGWARTS_HOUSES)}* or :sorting-hat:_'}
             else:
-                message = {'text': f'Wizard {assigner} is not enrolled yet'}
+                message = {'text': f'_Wizard *{assigner}* does not have priviledges yet, please enroll_'}
     else:
         instructions = display_instructions()
         message = {'text': f'First add yourself to your favorite house :european_castle:,  '

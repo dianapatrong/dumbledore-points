@@ -51,6 +51,7 @@ def test_process_point_allocation_remove_more_than_total(use_moto):
 
 
 
+
 @mock_dynamodb2
 def test_process_point_allocation_headmaster(use_moto):
     from src.app import process_point_allocation
@@ -80,7 +81,24 @@ def test_process_point_allocation_cheater(use_moto):
     message = process_point_allocation(table, ['gilderoylockheart'], 10, 'gilderoylockheart')
     assert message == {'attachments': [{'text': '_Are you awarding points to yourself? That is like the '
                                                 '*Forbidden Forest*: off limits_ :shame:'}],
-                                       'text': '_*gilderoylockheart*_ has *10* points, cheater'}
+                                       'text': '_*gilderoylockheart*_ has *10* points, you will be cursed with '
+                                               'the *Anti-Cheating* spell_'}
+
+
+def test_message_for_not_verified_wizards():
+    from src.app import message_for_not_verified_wizards
+    message = message_for_not_verified_wizards(['voldemort', 'doloresumbridge'])
+    assert message == {'text': '_Not a drop of magical blood in *voldemort* veins_\n'
+                               '_Not a drop of magical blood in *doloresumbridge* veins_'}
+
+
+def test_merge_message():
+    from src.app import merge_message
+    verified ={'text': '_*dumbledore* has awarded *10* points to *harrypotter*, new total is *20* points_'}
+    not_verified = {'text': '_Not a drop of magical blood in *voldemort* veins\n'}
+    message = merge_message(verified, not_verified)
+    assert message == {'text': '_*dumbledore* has awarded *10* points to *harrypotter*, new total is *20* points_\n_'
+                               'Not a drop of magical blood in *voldemort* veins\n'}
 
 
 @mock_dynamodb2
