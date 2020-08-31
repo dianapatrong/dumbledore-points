@@ -248,7 +248,7 @@ def lambda_handler(event, context):
     message = {}
 
     if not verify_request(event):
-        return respond({"text":"Message verification failed"})
+        return respond({'text': 'Message verification failed'})
     params = parse_qs(event['body'])
 
     channel_id = params['channel_id']

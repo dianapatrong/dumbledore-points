@@ -1,18 +1,33 @@
+import os
 import json
 import boto3
 from src import app
 import pytest
+import hmac
+import hashlib
 from moto import mock_dynamodb2
 
 
 @mock_dynamodb2
-class TestDumbledorePoints():
+class TestDumbledorePoints:
+    @staticmethod
+    def apigw_event():
+        """ Generates API GW Event"""
+        with open("events/event.json") as json_file:
+            return json.load(json_file)
+
     @staticmethod
     def get_slack_command(username, app_name, text):
-        return {"body": f"user_name={username}&command=%2F{app_name}&text={text}"}
+        event = TestDumbledorePoints.apigw_event()
+        event["body"] = f"user_name={username}&channel_id=testing&command=%2F{app_name}&text={text}"
+        signature = f"v0:{event['headers']['X-Slack-Request-Timestamp']}:{event['body']}".encode('utf-8')
+        my_signature = f"v0={hmac.new(os.environ['SLACK_KEY'].encode('utf-8'), signature, hashlib.sha256).hexdigest()}"
+        event['headers']['X-Slack-Signature'] = my_signature
+        return event
 
     def test_display_instructions_handler(self):
         event = TestDumbledorePoints.get_slack_command('dumbledore', 'dumbledore', '')
+        print("EVENT ", event)
         ret = app.lambda_handler(event, "")
         data = json.loads(ret['body'])
         assert ret["statusCode"] == 200

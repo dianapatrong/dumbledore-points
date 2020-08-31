@@ -35,10 +35,5 @@ def test_get_house_points(use_moto):
     total_points, house_points = get_house_points(table, 'gryffindor')
     assert house_points == '_dumbledore_: 9999\n_harrypotter_: 1\n'
     assert total_points == 10000
-    """x = table.get_item(Key={'username': 'dumbledore'})
-    print("DUMBLEDORE", x)
-
-    #x = table.scan(FilterExpression=boto3.dynamodb.conditions.Attr('house').eq('gryffindor'.lower()))
-    #print("HOUSES", x)"""
 
 

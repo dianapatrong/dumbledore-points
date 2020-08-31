@@ -129,8 +129,8 @@ If you mess something up you will most likely end with a random message from dum
 # Testing
 Since I needed interaction with the AWS infrastructure I implemented my tests with: 
 
-* boto3, the AWS SDK for Python and moto
-* moto, a library that allows you to easily mock AWS services so that you can run unit tests locally, 
+* **boto3**: the AWS SDK for Python and moto
+* **moto**: a library that allows you to easily mock AWS services so that you can run unit tests locally, 
 with expected responses from AWS, without actually calling any services/resources on AWS.
 
 To run the functional and unit tests run the following command: 
