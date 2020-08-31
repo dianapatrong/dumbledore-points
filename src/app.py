@@ -10,7 +10,7 @@ import boto3
 HEADMASTER = ['dianapatrong', 'dumbledore']
 HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
 PREFIXES = ["In the lead is ", "Second place is ", "Third place is ", "Fourth place is "]
-# CHANNEL_ID = os.environ['CHANNEL_ID']
+CHANNEL_ID = os.environ['CHANNEL_ID']
 INSTRUCTIONS = {
     '- set house': '/dumbledore set house house_name _*or*_ /dumbledore set house :sorting-hat:\n',
     '- set title': '/dumbledore set title your name and whatever you wanna be called like Hogwarts Caretaker, be creative\n',
@@ -49,8 +49,8 @@ def parse_points(text, give_points):
     for num in text:
         try:
             possible_points.append(int(num))
-        except ValueError:
-            print("Not an integer")
+        except ValueError as e:
+            print("Something went wrong: ", e)
     if not possible_points and give_points:
         points = 200  # Default value if not given any points
     elif not give_points:
@@ -148,7 +148,6 @@ def allocate_points(table, wizard, points, assigner):
         table,
         wizard,
         attributes={':p': points_to_give},
-        condition='attribute_exists(username)',
         update_expression='set points = :p',
         return_values='ALL_NEW'
     )
@@ -244,25 +243,19 @@ def verify_user(table, user):
 
 
 def lambda_handler(event, context):
-    print("EVENT", event)
     dynamo = boto3.resource('dynamodb')
     table = dynamo.Table('alumni')
-
     message = {}
-    '''
+
     if not verify_request(event):
         return respond({"text":"Message verification failed"})
-    '''
-
     params = parse_qs(event['body'])
 
-    '''
     channel_id = params['channel_id']
     if channel_id[0] != CHANNEL_ID:  # This is only for locking the slash command to a single channel
         message = respond({'text': '_The *Marauder\'s Map* shows everyone, use it to find the slack channel where '
                                    'this feature is located_'})
         return message
-    '''
 
     if 'text' in params:
         text = params['text'][0].replace('\xa0', ' ').split(" ")
@@ -325,6 +318,3 @@ def lambda_handler(event, context):
     message['response_type'] = 'in_channel'
 
     return respond(message)
-
-
-
