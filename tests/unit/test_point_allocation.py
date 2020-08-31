@@ -88,8 +88,8 @@ def test_process_point_allocation_cheater(use_moto):
 def test_message_for_not_verified_wizards():
     from src.app import message_for_not_verified_wizards
     message = message_for_not_verified_wizards(['voldemort', 'doloresumbridge'])
-    assert message == {'text': '_Not a drop of magical blood in *voldemort* veins_\n'
-                               '_Not a drop of magical blood in *doloresumbridge* veins_'}
+    assert message == {'text': '_Not a drop of magical blood in *voldemort\'s* veins_\n'
+                               '_Not a drop of magical blood in *doloresumbridge\'s* veins_'}
 
 
 def test_merge_message():
@@ -97,9 +97,8 @@ def test_merge_message():
     verified ={'text': '_*dumbledore* has awarded *10* points to *harrypotter*, new total is *20* points_'}
     not_verified = {'text': '_Not a drop of magical blood in *voldemort* veins\n'}
     message = merge_message(verified, not_verified)
-    assert message == {'text': '_*dumbledore* has awarded *10* points to *harrypotter*, new total is *20* points_\n_'
-                               'Not a drop of magical blood in *voldemort* veins\n'}
-
+    assert message == {'text': '_*dumbledore* has awarded *10* points to *harrypotter*, new total is *20* points_\n'
+                               '_Not a drop of magical blood in *voldemort* veins\n'}
 
 @mock_dynamodb2
 def test_get_wizard_points(use_moto):

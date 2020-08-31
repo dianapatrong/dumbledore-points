@@ -90,3 +90,9 @@ def test_verify_registered_user(use_moto):
     table.put_item(Item=item)
     exists = verify_user(table, 'voldemort')
     assert exists == True
+
+
+def test_parse_potential_house_bold_italic():
+    from src.app import parse_potential_house
+    house = parse_potential_house('_*slytherin*_')
+    assert house == 'slytherin'

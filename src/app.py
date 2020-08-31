@@ -106,7 +106,7 @@ def get_house_leaderboard(table: Table) -> Dict[str, int]:
 
 
 def parse_potential_house(house: str) -> Union[str, None]:
-    target_house = house.lower()
+    target_house = house.lower().replace("*", "").replace("_", "")
     if target_house in HOGWARTS_HOUSES:
         return target_house
     else:
@@ -255,11 +255,13 @@ def lambda_handler(event: dict, context: dict):
         return respond({'text': 'Message verification failed'})
     params: dict = parse_qs(event['body'])
 
+    """
     channel_id = params['channel_id']
     if channel_id[0] != CHANNEL_ID:  # This is only for locking the slash command to a single channel
         message = respond({'text': '_The *Marauder\'s Map* shows everyone, use it to find the slack channel where '
                                    'this feature is located_'})
         return message
+    """
 
     if 'text' in params:
         text: list = params['text'][0].replace('\xa0', ' ').split(" ")
