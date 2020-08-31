@@ -4,10 +4,10 @@ import hmac
 import hashlib
 from urllib.parse import parse_qs
 import random
-from src.dynamo_db_helper import *
+from dynamo_db_helper import *
 import boto3
 
-HEADMASTER = ['dianapatrong', 'bellatrix']
+HEADMASTER = ['dianapatrong', 'dumbledore']
 HOGWARTS_HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff']
 PREFIXES = ["In the lead is ", "Second place is ", "Third place is ", "Fourth place is "]
 # CHANNEL_ID = os.environ['CHANNEL_ID']
@@ -51,7 +51,6 @@ def parse_points(text, give_points):
             possible_points.append(int(num))
         except ValueError:
             print("Not an integer")
-
     if not possible_points and give_points:
         points = 200  # Default value if not given any points
     elif not give_points:
@@ -61,7 +60,7 @@ def parse_points(text, give_points):
     return points
 
 
-def parse_slack_message(text):
+def parse_points_message(text):
     give_points = True if [word for word in text if any(s in word for s in ['give', '+'])] else False
     wizards = [remove_at(name) for name in text if name.startswith('@')]
     if not wizards:
@@ -76,10 +75,9 @@ def get_house_points(table, house):
     total_points = int(sum([wizard['points'] for wizard in scanned_wizards]))
     house_members = {}
     for wizard in scanned_wizards:
-        house_members[get_title_if_exists_dict(wizard)] = wizard['points']
+        house_members[get_title_if_exists(table, wizard['username'])] = wizard['points']
 
     members_by_points = {member: house_members[member] for member in sorted(house_members, key=house_members.get, reverse=True)}
-
     house_members_leaderboard = ""
     for member, points in members_by_points.items():
         house_members_leaderboard += f'_{member}_: {points}\n'
@@ -132,7 +130,6 @@ def clean_points(points):
 def get_wizard_points(table, wizard):
     wizard_info = get_item_info(table, wizard)
     points = int(wizard_info['points'])
-    print("POPOPO INS", points)
     return points
 
 
@@ -141,15 +138,11 @@ def get_title_if_exists(table, wizard):
     return wizard_info['title'] if 'title' in wizard_info else wizard_info['username']
 
 
-def get_title_if_exists_dict(wizard):
-    return wizard['title'] if 'title' in wizard else wizard['username']
-
-
 def allocate_points(table, wizard, points, assigner):
     points = clean_points(points)
     wizard_info = get_item_info(table, wizard)
-    print("wizard_info", wizard_info)
     points_to_give = wizard_info['points'] + points
+    points_to_give = points_to_give if points_to_give > 0 else 0
 
     update_points = update_item(
         table,
@@ -159,57 +152,16 @@ def allocate_points(table, wizard, points, assigner):
         update_expression='set points = :p',
         return_values='ALL_NEW'
     )
-    print("update points", update_points)
-
-    set_points_to_zero = update_item(
-        table,
-        wizard,
-        attributes={':min': 0},
-        condition='points < :min',
-        update_expression='set points = :min',
-        return_values='UPDATED_NEW'
-    )
-    print("updated_points", update_points)
-    print("set_to_zero", set_points_to_zero)
-
-    message = set_points_to_zero if set_points_to_zero else update_points
-    total_points = message['Attributes']['points']
-    print("total_points", total_points)
-    assignee = get_title_if_exists(table, wizard)
-    assigner = get_title_if_exists(table, assigner)
-    points_action = f'awarded *{points}* points to *{assignee}*' if points > 0 else f'removed *{points}* points from *{wizard}*'
-    message = {'text': f'_*{assigner}* has {points_action}, new total is *{total_points}* points_'}
+    total_points = update_points['Attributes']['points']
+    assignee_title = get_title_if_exists(table, wizard)
+    assigner_title = get_title_if_exists(table, assigner)
+    points_action = f'awarded *{points}* points to *{assignee_title}*' if points > 0 else f'removed *{points}* points from *{wizard}*'
+    message = {'text': f'_*{assigner_title}* has {points_action}, new total is *{total_points}* points_'}
     return message
 
 
 def is_headmaster(wizard, assigner):
     return True if wizard == assigner and assigner not in HEADMASTER else False
-
-
-def process_point_allocation2(table, assigner, text):
-    message = {}
-    wizards, points_to_give = parse_slack_message(text)
-    agg_messages = []
-    if wizards:
-        for wizard in wizards:
-            # Avoid wizards from granting points to themselves
-            if is_headmaster(wizard, assigner):
-                current_points = get_wizard_points(table, wizard)
-                title = get_title_if_exists(table, wizard)
-
-                message = {'text': f'_*{title}*_ has *{current_points}* points, cheater  '}
-                message['attachments'] = [{'text': '_Are you awarding points to yourself? '
-                                                   'That is like the *Forbidden Forest*: off limits_ :shame:'}]
-            else:
-                points_allocated = allocate_points(table, wizard, points_to_give, assigner)
-                agg_messages.append(points_allocated) if points_allocated else False
-
-        if agg_messages:
-            message = {'text': '\n'.join(m_points['text'] for m_points in agg_messages)}
-    else:
-        message = {'text': f'_What do you think this is? Magic? '
-                           f'I do not know which wizard do you want to give points to_'}
-    return message
 
 
 def process_point_allocation(table, wizards, points, assigner):
@@ -220,7 +172,7 @@ def process_point_allocation(table, wizards, points, assigner):
         if is_headmaster(wizard, assigner):
             current_points = get_wizard_points(table, wizard)
             title = get_title_if_exists(table, wizard)
-            message = {'text': f'_*{title}*_ has *{current_points}* points, cheater  '}
+            message = {'text': f'_*{title}*_ has *{current_points}* points, cheater'}
             message['attachments'] = [{'text': '_Are you awarding points to yourself? '
                                                'That is like the *Forbidden Forest*: off limits_ :shame:'}]
         else:
@@ -265,7 +217,7 @@ def send_random_quote(assigner):
         f'It is our choices, *{assigner}*, that show what we truly are, far more than our abilities.',
         f'It is a curious thing, *{assigner}*, but perhaps those who are best suited to power are those who have never sought it.',
         'You will also find that help will always be given at Hogwarts to those who ask for it.',
-        'Happiness can be found even in the darkest of times, when one only remembers to turn on the light.',
+        'Happiness can be found even in the darkest of times, when one only remembers to turn on the light :bulb:.',
         f'Do not put your wand there, *{assigner}*! .. Better wizards than you have lost buttocks, you know.',
         f'Of course this is happening inside your head, *{assigner}*, but why on earth should that mean that it is not real?',
         'There are some things you cannot share without ending up liking each other, and knocking out a twelve-foot mountain troll is one of them.',
@@ -279,6 +231,7 @@ def verify_user(table, user):
 
 
 def lambda_handler(event, context):
+    print("EVENT", event)
     dynamo = boto3.resource('dynamodb')
     table = dynamo.Table('Hogwarts_Alumni')
 
@@ -318,7 +271,7 @@ def lambda_handler(event, context):
                            'attachments': [{"text": members_leaderboard}]}
 
             elif ['set', 'house'] == text[0:2]:
-                message = {'text': f'Wizard _*{assigner}*_ already exists'}
+                message = {'text': f'Wizard _*{get_title_if_exists(table, assigner)}*_ already exists'}
 
             elif ['set', 'title'] == text[0:2] and len(text) > 2:
                 title = ' '.join(text[2:])
@@ -326,7 +279,7 @@ def lambda_handler(event, context):
 
             # Allocate points
             elif matching_words:
-                wizards, points = parse_slack_message(text)
+                wizards, points = parse_points_message(text)
                 verified_wizards = [wizard for wizard in wizards if verify_user(table, wizard)]
                 if verified_wizards:
                     message = process_point_allocation(table, verified_wizards, points, assigner)
@@ -342,10 +295,10 @@ def lambda_handler(event, context):
                 house = parse_house_text(text[2:])
                 if house is not None:
                     message = create_wizard(table, assigner, house)
+                else:
+                    message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
+                                       f' *{", ".join(HOGWARTS_HOUSES)}* or :sorting-hat:_'}
             else:
-                message = {'text': f'_Are you a *muggle* or what? Spell the house name correctly:'
-                                   f' *{", ".join(HOGWARTS_HOUSES)}* or :sorting-hat:'}
-
                 message = {'text': f'Wizard {assigner} is not enrolled yet'}
     else:
         instructions = display_instructions()

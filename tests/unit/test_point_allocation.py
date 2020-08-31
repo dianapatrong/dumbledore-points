@@ -35,6 +35,23 @@ def test_process_point_allocation_remove(use_moto):
 
 
 @mock_dynamodb2
+def test_process_point_allocation_remove_more_than_total(use_moto):
+    from src.app import process_point_allocation
+    use_moto()
+    items = [
+        {'username': 'dobby', 'house': 'slytherin', 'points': 10},
+        {'username': 'bellatrix', 'house': 'slytherin', 'points': 200}
+    ]
+    table = boto3.resource('dynamodb', region_name='us-east-1').Table('alumni')
+    with table.batch_writer() as batch:
+        for i in items:
+            batch.put_item(Item=i)
+    message = process_point_allocation(table, ['dobby'], -500, 'bellatrix')
+    assert message == {'text': '_*bellatrix* has removed *-500* points from *dobby*, new total is *0* points_'}
+
+
+
+@mock_dynamodb2
 def test_process_point_allocation_headmaster(use_moto):
     from src.app import process_point_allocation
     use_moto()
@@ -94,39 +111,51 @@ def test_allocate_points_found_wizards(use_moto):
 
 
 @mock_dynamodb2
-def test_parse_slack_message_single_user(use_moto):
+def test_allocate_points_remove_and_update_to_zero(use_moto):
+    from src.app import allocate_points
+    use_moto()
+    items = [
+        {'username': 'dumbledore', 'house': 'gryffindor', 'points': 5},
+        {'username': 'hagrid', 'house': 'gryffindor', 'points': 100}
+    ]
+    table = boto3.resource('dynamodb', region_name='us-east-1').Table('alumni')
+    with table.batch_writer() as batch:
+        for i in items:
+            batch.put_item(Item=i)
+    message = allocate_points(table, 'dumbledore', -200, 'hagrid')
+    assert message == {'text': '_*hagrid* has removed *-200* points from *dumbledore*, new total is *0* points_'}
+
+
+
+def test_parse_slack_message_single_user():
     from src.app import parse_points_message
     wizards, points = parse_points_message(['give', '10', '@dumbledore'])
     assert wizards == ['dumbledore']
     assert points == 10
 
 
-@mock_dynamodb2
-def test_parse_slack_message_multiple_users(use_moto):
+def test_parse_slack_message_multiple_users():
     from src.app import parse_points_message
     wizards, points = parse_points_message(['give', '10', '@dumbledore', '@harrypotter'])
     assert wizards == ['dumbledore', 'harrypotter']
     assert points == 10
 
 
-@mock_dynamodb2
-def test_parse_slack_message_multiple_points(use_moto):
+def test_parse_slack_message_multiple_points():
     from src.app import parse_points_message
     wizards, points = parse_points_message(['give', '10', '@dumbledore', '59'])
     assert wizards == ['dumbledore']
     assert points == 10
 
 
-@mock_dynamodb2
-def test_parse_slack_message_no_users(use_moto):
+def test_parse_slack_message_no_users():
     from src.app import parse_points_message
     wizards, points = parse_points_message(['give', '10'])
     assert wizards == False
     assert points == False
 
 
-@mock_dynamodb2
-def test_parse_slack_message_no_points(use_moto):
+def test_parse_slack_message_no_points():
     from src.app import parse_points_message
     wizards, points = parse_points_message(['give', '@harrypotter'])
     assert wizards == ['harrypotter']
