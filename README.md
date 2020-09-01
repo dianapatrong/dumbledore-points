@@ -11,7 +11,7 @@ or win a Quidditch Match. They can also be taken away for misbehaving or rule-br
 
 The **House Cup** was a yearly award given at _**Hogwarts School of Witchcraft and Wizardry**_; it was given at the end of the
 school year to the house with the most **House Points**. This Slack application was developed to simulate the **House Cup** within your workspace,
-you can points to your teammates or colleagues  for taking time to help you out but also you can take them away if they did something not cool, like 
+you can give points to your teammates or colleagues  for taking time to help you out but also you can take them away if they did something not cool, like 
 enter a meeting 10 minutes late. 
 
 **Let the games begin!**
