@@ -92,6 +92,11 @@ if channel_id[0] != CHANNEL_ID:  # This is only for locking the slash command to
                                'this feature is located_'})`
 ```
 
+> **NOTE**: The main reason why lock this command into a channel is because the responses take a lot of space, 
+> and you wouldn't want to have to scroll a lot to find the message that you are looking for, so it'll be better
+> to have it in a separate channel just for that purpose 
+
+ 
 ## How to use
 There are different order that you can give with the same slash command `/dumbledore`, the first thing you need 
 to do is to enroll to Hogwarts and to do so you can use the following commands: 
@@ -102,7 +107,7 @@ you should know this unless you are a muggle.
 * `/dumbledore set house gryffindor` if you know which house you belong to
 * `/dumbledore set house :sorting-hat:` if you want the sorting hat to take care of your house allocation
 
-**Set your title (optonal)**:
+**Set your title (optional)**:
 You can set a cool title next to your name
 * `/dumbledore set title Diana Patron, Advisor to the Minister for Magic ` 
 
