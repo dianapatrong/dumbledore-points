@@ -255,13 +255,13 @@ def lambda_handler(event: dict, context: dict):
         return respond({'text': 'Message verification failed'})
     params: dict = parse_qs(event['body'])
 
-    """
+
     channel_id = params['channel_id']
     if channel_id[0] != CHANNEL_ID:  # This is only for locking the slash command to a single channel
         message = respond({'text': '_The *Marauder\'s Map* shows everyone, use it to find the slack channel where '
                                    'this feature is located_'})
         return message
-    """
+
 
     if 'text' in params:
         text: list = params['text'][0].replace('\xa0', ' ').split(" ")
