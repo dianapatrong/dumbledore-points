@@ -81,7 +81,7 @@ def test_process_point_allocation_cheater(use_moto):
     message = process_point_allocation(table, ['gilderoylockheart'], 10, 'gilderoylockheart')
     assert message == {'attachments': [{'text': '_Are you awarding points to yourself? That is like the '
                                                 '*Forbidden Forest*: off limits_ :shame:'}],
-                                       'text': '_*gilderoylockheart*_ has *10* points, you will be cursed with '
+                                       'text': '_*gilderoylockheart* has *10* points, you will be cursed with '
                                                'the *Anti-Cheating* spell_'}
 
 

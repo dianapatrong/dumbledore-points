@@ -2,7 +2,6 @@ import os
 import json
 import boto3
 from src import app
-import pytest
 import hmac
 import hashlib
 from moto import mock_dynamodb2
@@ -19,7 +18,7 @@ class TestDumbledorePoints:
     @staticmethod
     def get_slack_command(username, app_name, text):
         event = TestDumbledorePoints.apigw_event()
-        event["body"] = f"user_name={username}&channel_id=testing&command=%2F{app_name}&text={text}"
+        event['body'] = f"user_name={username}&channel_id=testing&command=%2F{app_name}&text={text}"
         signature = f"v0:{event['headers']['X-Slack-Request-Timestamp']}:{event['body']}".encode('utf-8')
         my_signature = f"v0={hmac.new(os.environ['SLACK_KEY'].encode('utf-8'), signature, hashlib.sha256).hexdigest()}"
         event['headers']['X-Slack-Signature'] = my_signature

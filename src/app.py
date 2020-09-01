@@ -175,7 +175,7 @@ def process_point_allocation(table: Table, wizards: Iterable[str], points: int, 
         if is_headmaster(wizard, assigner):
             current_points = get_wizard_points(table, wizard)
             title = get_title_if_exists(table, wizard)
-            message['text'] = f'_*{title}*_ has *{current_points}* points, you will be cursed with the *Anti-Cheating* spell_'
+            message['text'] = f'_*{title}* has *{current_points}* points, you will be cursed with the *Anti-Cheating* spell_'
             message['attachments'] = [{'text': '_Are you awarding points to yourself? '  
                                                'That is like the *Forbidden Forest*: off limits_ :shame:'}]
         else:

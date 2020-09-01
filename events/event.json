@@ -3,6 +3,6 @@
   "path": "/test",
   "headers": {
     "X-Slack-Request-Timestamp": "1597773141",
-    "X-Slack-Signature": "v0=befdb74478658227af7f7a56ae8120492f25f91840ab26e22c439ffb750d6cd4"
+    "X-Slack-Signature": "signature"
   }
 }
